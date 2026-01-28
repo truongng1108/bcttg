@@ -34,7 +34,6 @@ export function AdminHeader({ onToggleSidebar }: AdminHeaderProps) {
 
         <div className="flex items-center gap-3">
           {/* Ngôi sao trang trí */}
-          <Star className="h-5 w-5 text-accent" fill="currentColor" />
           <div className="flex flex-col">
             <h1 className="text-base font-bold uppercase leading-tight tracking-wide text-primary">
               SỔ TAY ĐIỆN TỬ GIÁO DỤC TRUYỀN THỐNG
@@ -43,7 +42,6 @@ export function AdminHeader({ onToggleSidebar }: AdminHeaderProps) {
               Hệ thống Quản trị Nội bộ - Binh chủng Tăng Thiết Giáp
             </p>
           </div>
-          <Star className="h-5 w-5 text-accent" fill="currentColor" />
         </div>
       </div>
 
