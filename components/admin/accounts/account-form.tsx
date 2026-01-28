@@ -1,66 +1,27 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Save, X, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { FormField } from "../shared/form-field"
+import { FormFieldRHF } from "../shared/form-field-rhf"
 import { ConfirmDialog } from "../shared/confirm-dialog"
+import { rankOptions, unitOptions, roleOptions, statusOptions } from "@/lib/data/mock/options"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import {
+  AccountCreateFormSchema,
+  AccountUpdateFormSchema,
+  type AccountCreateFormData,
+  type AccountFormData,
+  type AccountUpdateFormData,
+} from "@/lib/schemas/account.schema"
 
 interface AccountFormProps {
-  mode: "create" | "edit"
-  initialData?: {
-    rank: string
-    fullName: string
-    username: string
-    email: string
-    phone: string
-    unit: string
-    role: string
-    status: string
-  }
-  onBack: () => void
-  onSave: (data: unknown) => void
+  readonly mode: "create" | "edit"
+  readonly initialData?: Partial<AccountFormData>
+  readonly onBack: () => void
+  readonly onSave: (data: AccountCreateFormData | AccountUpdateFormData) => void
 }
-
-const rankOptions = [
-  { value: "binh-nhi", label: "Binh nhì" },
-  { value: "binh-nhat", label: "Binh nhất" },
-  { value: "ha-si", label: "Hạ sĩ" },
-  { value: "trung-si", label: "Trung sĩ" },
-  { value: "thuong-si", label: "Thượng sĩ" },
-  { value: "thieu-uy", label: "Thiếu úy" },
-  { value: "trung-uy", label: "Trung úy" },
-  { value: "thuong-uy", label: "Thượng úy" },
-  { value: "dai-uy", label: "Đại úy" },
-  { value: "thieu-ta", label: "Thiếu tá" },
-  { value: "trung-ta", label: "Trung tá" },
-  { value: "thuong-ta", label: "Thượng tá" },
-  { value: "dai-ta", label: "Đại tá" },
-]
-
-const unitOptions = [
-  { value: "phong-chinh-tri", label: "Phòng Chính trị" },
-  { value: "phong-ky-thuat", label: "Phòng Kỹ thuật" },
-  { value: "phong-hau-can", label: "Phòng Hậu cần" },
-  { value: "ban-chi-huy", label: "Ban Chỉ huy" },
-  { value: "tieu-doan-1", label: "Tiểu đoàn 1" },
-  { value: "tieu-doan-2", label: "Tiểu đoàn 2" },
-  { value: "tieu-doan-3", label: "Tiểu đoàn 3" },
-]
-
-const roleOptions = [
-  { value: "admin", label: "Quản trị viên" },
-  { value: "commander", label: "Chỉ huy" },
-  { value: "political", label: "Cán bộ chính trị" },
-  { value: "editor", label: "Biên tập viên" },
-  { value: "user", label: "Người dùng" },
-]
-
-const statusOptions = [
-  { value: "active", label: "Hoạt động" },
-  { value: "inactive", label: "Không hoạt động" },
-  { value: "pending", label: "Chờ duyệt" },
-]
 
 export function AccountForm({
   mode,
@@ -68,64 +29,57 @@ export function AccountForm({
   onBack,
   onSave,
 }: AccountFormProps) {
-  const [formData, setFormData] = useState({
-    rank: initialData?.rank ?? "",
-    fullName: initialData?.fullName ?? "",
-    username: initialData?.username ?? "",
-    email: initialData?.email ?? "",
-    phone: initialData?.phone ?? "",
-    unit: initialData?.unit ?? "",
-    role: initialData?.role ?? "",
-    status: initialData?.status ?? "active",
-    password: "",
-    confirmPassword: "",
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+
+  const form = useForm<AccountFormData>({
+    resolver: zodResolver(
+      mode === "create" ? AccountCreateFormSchema : AccountUpdateFormSchema
+    ),
+    defaultValues: {
+      rank: initialData?.rank ?? "",
+      fullName: initialData?.fullName ?? "",
+      username: initialData?.username ?? "",
+      email: initialData?.email ?? "",
+      phone: initialData?.phone ?? "",
+      unit: initialData?.unit ?? "",
+      role: initialData?.role ?? "",
+      status: initialData?.status ?? "active",
+      password: "",
+      confirmPassword: "",
+    },
   })
 
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  useEffect(() => {
+    form.reset({
+      rank: initialData?.rank ?? "",
+      fullName: initialData?.fullName ?? "",
+      username: initialData?.username ?? "",
+      email: initialData?.email ?? "",
+      phone: initialData?.phone ?? "",
+      unit: initialData?.unit ?? "",
+      role: initialData?.role ?? "",
+      status: initialData?.status ?? "active",
+      password: "",
+      confirmPassword: "",
+    })
+  }, [form, initialData])
 
-  const handleChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-    // Clear error when field changes
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: "" }))
-    }
-  }
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {}
-
-    if (!formData.rank) newErrors.rank = "Vui lòng chọn cấp bậc"
-    if (!formData.fullName.trim())
-      newErrors.fullName = "Vui lòng nhập họ và tên"
-    if (!formData.username.trim())
-      newErrors.username = "Vui lòng nhập tên đăng nhập"
-    if (!formData.unit) newErrors.unit = "Vui lòng chọn đơn vị"
-    if (!formData.role) newErrors.role = "Vui lòng chọn vai trò"
-
+  const onSubmit = (values: AccountFormData) => {
     if (mode === "create") {
-      if (!formData.password) {
-        newErrors.password = "Vui lòng nhập mật khẩu"
-      } else if (formData.password.length < 8) {
-        newErrors.password = "Mật khẩu phải có ít nhất 8 ký tự"
-      }
-      if (formData.password !== formData.confirmPassword) {
-        newErrors.confirmPassword = "Mật khẩu xác nhận không khớp"
-      }
+      const parsed = AccountCreateFormSchema.parse(values)
+      onSave(parsed)
+      return
     }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = () => {
-    if (validateForm()) {
-      onSave(formData)
-    }
+    const parsed = AccountUpdateFormSchema.parse(values)
+    onSave(parsed)
   }
 
   const handleCancel = () => {
-    setCancelDialogOpen(true)
+    if (form.formState.isDirty) {
+      setCancelDialogOpen(true)
+      return
+    }
+    onBack()
   }
 
   return (
@@ -163,92 +117,78 @@ export function AccountForm({
         <div className="space-y-6 p-6">
           {/* Row 1: Rank & Full Name */}
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <FormField
+            <FormFieldRHF
               label="Cấp bậc"
               name="rank"
               type="select"
               required
-              value={formData.rank}
-              onChange={(v) => handleChange("rank", v)}
+              control={form.control}
               options={rankOptions}
-              error={errors.rank}
             />
-            <FormField
+            <FormFieldRHF
               label="Họ và tên"
               name="fullName"
               required
               placeholder="Nhập họ và tên đầy đủ"
-              value={formData.fullName}
-              onChange={(v) => handleChange("fullName", v)}
-              error={errors.fullName}
+              control={form.control}
             />
           </div>
 
           {/* Row 2: Username & Email */}
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <FormField
+            <FormFieldRHF
               label="Tên đăng nhập"
               name="username"
               required
               placeholder="Nhập tên đăng nhập"
-              value={formData.username}
-              onChange={(v) => handleChange("username", v)}
-              error={errors.username}
+              control={form.control}
               helpText="Chỉ sử dụng chữ cái, số và dấu gạch dưới"
               disabled={mode === "edit"}
             />
-            <FormField
+            <FormFieldRHF
               label="Email"
               name="email"
               type="email"
               placeholder="Nhập địa chỉ email"
-              value={formData.email}
-              onChange={(v) => handleChange("email", v)}
-              error={errors.email}
+              control={form.control}
             />
           </div>
 
           {/* Row 3: Phone & Unit */}
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <FormField
+            <FormFieldRHF
               label="Số điện thoại"
               name="phone"
               type="tel"
               placeholder="Nhập số điện thoại"
-              value={formData.phone}
-              onChange={(v) => handleChange("phone", v)}
+              control={form.control}
             />
-            <FormField
+            <FormFieldRHF
               label="Đơn vị"
               name="unit"
               type="select"
               required
-              value={formData.unit}
-              onChange={(v) => handleChange("unit", v)}
+              control={form.control}
               options={unitOptions}
-              error={errors.unit}
             />
           </div>
 
           {/* Row 4: Role & Status */}
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <FormField
+            <FormFieldRHF
               label="Vai trò"
               name="role"
               type="select"
               required
-              value={formData.role}
-              onChange={(v) => handleChange("role", v)}
+              control={form.control}
               options={roleOptions}
-              error={errors.role}
             />
-            <FormField
+            <FormFieldRHF
               label="Trạng thái"
               name="status"
               type="select"
               required
-              value={formData.status}
-              onChange={(v) => handleChange("status", v)}
+              control={form.control}
               options={statusOptions}
             />
           </div>
@@ -264,26 +204,22 @@ export function AccountForm({
             </div>
             <div className="space-y-6 p-6 pt-0">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <FormField
+                <FormFieldRHF
                   label="Mật khẩu"
                   name="password"
                   type="password"
                   required
                   placeholder="Nhập mật khẩu"
-                  value={formData.password}
-                  onChange={(v) => handleChange("password", v)}
-                  error={errors.password}
+                  control={form.control}
                   helpText="Tối thiểu 8 ký tự, bao gồm chữ hoa, chữ thường và số"
                 />
-                <FormField
+                <FormFieldRHF
                   label="Xác nhận mật khẩu"
                   name="confirmPassword"
                   type="password"
                   required
                   placeholder="Nhập lại mật khẩu"
-                  value={formData.confirmPassword}
-                  onChange={(v) => handleChange("confirmPassword", v)}
-                  error={errors.confirmPassword}
+                  control={form.control}
                 />
               </div>
             </div>
@@ -299,7 +235,7 @@ export function AccountForm({
             Hủy bỏ
           </Button>
           <Button
-            onClick={handleSubmit}
+            onClick={form.handleSubmit(onSubmit)}
             className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Save className="h-4 w-4" />

@@ -1,6 +1,6 @@
 "use client"
 
-import { Menu, LogOut, Bell, User, Star } from "lucide-react"
+import { Menu, LogOut, Bell, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 interface AdminHeaderProps {
-  onToggleSidebar: () => void
+  readonly onToggleSidebar: () => void
 }
 
 export function AdminHeader({ onToggleSidebar }: AdminHeaderProps) {
@@ -33,8 +33,6 @@ export function AdminHeader({ onToggleSidebar }: AdminHeaderProps) {
         </Button>
 
         <div className="flex items-center gap-3">
-          {/* Ngôi sao trang trí */}
-          <Star className="h-5 w-5 text-accent" fill="currentColor" />
           <div className="flex flex-col">
             <h1 className="text-base font-bold uppercase leading-tight tracking-wide text-primary">
               SỔ TAY ĐIỆN TỬ GIÁO DỤC TRUYỀN THỐNG
@@ -43,7 +41,6 @@ export function AdminHeader({ onToggleSidebar }: AdminHeaderProps) {
               Hệ thống Quản trị Nội bộ - Binh chủng Tăng Thiết Giáp
             </p>
           </div>
-          <Star className="h-5 w-5 text-accent" fill="currentColor" />
         </div>
       </div>
 
@@ -71,7 +68,7 @@ export function AdminHeader({ onToggleSidebar }: AdminHeaderProps) {
                 <User className="h-4 w-4" />
               </div>
               <div className="hidden flex-col items-start md:flex">
-                <span className="text-sm font-semibold text-foreground">Đại úy Nguyễn Văn A</span>
+                <span className="text-sm font-semibold text-foreground">Nguyễn Huy Hoàng</span>
                 <span className="text-xs text-muted-foreground">
                   Quản trị viên
                 </span>
@@ -80,7 +77,7 @@ export function AdminHeader({ onToggleSidebar }: AdminHeaderProps) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <div className="px-2 py-1.5">
-              <p className="text-sm font-semibold text-foreground">Đại úy Nguyễn Văn A</p>
+              <p className="text-sm font-semibold text-foreground">Nguyễn Huy Hoàng</p>
               <p className="text-xs text-muted-foreground">
                 Phòng Chính trị - Binh chủng TTG
               </p>

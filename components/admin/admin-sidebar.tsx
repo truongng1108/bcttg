@@ -1,7 +1,6 @@
 "use client"
 
-import React from "react"
-
+import type React from "react"
 import { cn } from "@/lib/utils"
 import {
   LayoutDashboard,
@@ -19,76 +18,100 @@ import {
   Star,
   UserCircle,
   Medal,
-  Award
+  Award,
+  BarChart3
 } from "lucide-react"
-import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { NavItemComponent } from "./admin-sidebar/components/nav-item"
 
 interface AdminSidebarProps {
-  collapsed: boolean
-  onToggle: () => void
+  readonly collapsed: boolean
+  readonly onToggle: () => void
 }
 
 interface NavItem {
+  id: string
   title: string
-  href: string
+  href?: string
   icon: React.ElementType
   children?: NavItem[]
 }
 
+const brandConfig = {
+  logoSrc: "https://tailieuvanphong.com/wp-content/uploads/2024/08/logo-qdnd-vietnam-9.jpg",
+  logoAlt: "Logo QĐND Việt Nam",
+  line1: "BINH CHỦNG",
+  line2: "Tăng Thiết Giáp",
+}
+
 const navItems: NavItem[] = [
   {
+    id: "dashboard",
     title: "Dashboard",
-    href: "/admin",
+    href: "/",
     icon: LayoutDashboard,
   },
   {
+    id: "accounts",
     title: "Quản lý tài khoản",
-    href: "/admin/tai-khoan",
+    href: "/tai-khoan",
     icon: Users,
   },
   {
+    id: "home-modules",
     title: "Module trang chủ",
-    href: "/admin/module-trang-chu",
+    href: "/module-trang-chu",
     icon: LayoutGrid,
   },
   {
-    title: "CMS Nội dung",
-    href: "/admin/cms",
+    id: "content",
+    title: "Quản lý nội dung",
     icon: FileText,
     children: [
-      { title: "Truyền thống", href: "/admin/cms/truyen-thong", icon: Shield },
-      { title: "Nét tiêu biểu", href: "/admin/cms/net-tieu-bieu", icon: Star },
+      { id: "cms", title: "CMS Nội dung", href: "/cms", icon: FileText },
+      { id: "cms-truyen-thong", title: "Truyền thống", href: "/cms/truyen-thong", icon: Shield },
+      { id: "cms-net-tieu-bieu", title: "Nét tiêu biểu", href: "/cms/net-tieu-bieu", icon: Star },
     ],
   },
   {
+    id: "profiles",
     title: "Hồ sơ dữ liệu",
-    href: "/admin/ho-so",
+    href: "/ho-so",
     icon: FolderOpen,
     children: [
-      { title: "Thủ trưởng", href: "/admin/ho-so/thu-truong", icon: UserCircle },
-      { title: "Chiến sĩ", href: "/admin/ho-so/chien-si", icon: Medal },
-      { title: "Anh hùng", href: "/admin/ho-so/anh-hung", icon: Award },
+      { id: "ho-so-thu-truong", title: "Thủ trưởng", href: "/ho-so/thu-truong", icon: UserCircle },
+      { id: "ho-so-chien-si", title: "Chiến sĩ", href: "/ho-so/chien-si", icon: Medal },
+      { id: "ho-so-anh-hung", title: "Anh hùng", href: "/ho-so/anh-hung", icon: Award },
     ],
   },
   {
+    id: "songs",
     title: "Ca khúc truyền thống",
-    href: "/admin/ca-khuc",
+    href: "/ca-khuc",
     icon: Music,
   },
   {
+    id: "notes",
     title: "Ghi chú cá nhân",
-    href: "/admin/ghi-chu",
+    href: "/ghi-chu",
     icon: StickyNote,
   },
   {
+    id: "logs",
     title: "Nhật ký hệ thống",
-    href: "/admin/nhat-ky",
+    href: "/nhat-ky",
     icon: ClipboardList,
   },
   {
+    id: "reports",
+    title: "Báo cáo",
+    href: "/bao-cao",
+    icon: BarChart3,
+  },
+  {
+    id: "settings",
     title: "Cấu hình hệ thống",
-    href: "/admin/cau-hinh",
+    href: "/cau-hinh",
     icon: Settings,
   },
 ]
@@ -107,22 +130,30 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
       <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
         {!collapsed && (
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-sidebar-primary bg-sidebar-accent">
-              <Star className="h-5 w-5 text-sidebar-primary" />
+            <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-sidebar-primary">
+              <img 
+                src={brandConfig.logoSrc} 
+                alt={brandConfig.logoAlt} 
+                className="h-full w-full object-contain"
+              />
             </div>
             <div className="flex flex-col">
               <span className="text-xs font-bold uppercase tracking-wide text-sidebar-primary">
-                BINH CHỦNG
+                {brandConfig.line1}
               </span>
               <span className="text-xs font-medium text-sidebar-foreground">
-                Tăng Thiết Giáp
+                {brandConfig.line2}
               </span>
             </div>
           </div>
         )}
         {collapsed && (
-          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border-2 border-sidebar-primary bg-sidebar-accent">
-            <Star className="h-5 w-5 text-sidebar-primary" />
+          <div className="mx-auto flex h-10 w-10 min-h-10 min-w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-sidebar-primary">
+            <img 
+              src={brandConfig.logoSrc} 
+              alt={brandConfig.logoAlt} 
+              className="h-full w-full object-contain"
+            />
           </div>
         )}
       </div>
@@ -132,8 +163,19 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
         <ul className="space-y-1 px-2">
           {navItems.map((item) => (
             <NavItemComponent
-              key={item.href}
-              item={item}
+              key={item.id}
+              item={{
+                id: item.id,
+                href: item.href,
+                label: item.title,
+                icon: item.icon,
+                children: item.children?.map((child) => ({
+                  id: child.id,
+                  href: child.href,
+                  label: child.title,
+                  icon: child.icon,
+                })),
+              }}
               collapsed={collapsed}
               pathname={pathname}
             />
@@ -156,71 +198,5 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
         </button>
       </div>
     </aside>
-  )
-}
-
-function NavItemComponent({
-  item,
-  collapsed,
-  pathname,
-  level = 0,
-}: {
-  item: NavItem
-  collapsed: boolean
-  pathname: string
-  level?: number
-}) {
-  const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
-  const hasChildren = item.children && item.children.length > 0
-  const Icon = item.icon
-
-  if (hasChildren && !collapsed) {
-    return (
-      <li>
-        <div
-          className={cn(
-            "flex items-center gap-3 rounded px-3 py-2 text-sm font-medium text-sidebar-foreground/70",
-            level > 0 && "pl-9"
-          )}
-        >
-          <Icon className="h-4 w-4 flex-shrink-0" />
-          <span className="truncate">{item.title}</span>
-        </div>
-        <ul className="mt-1 space-y-1">
-          {item.children?.map((child) => (
-            <NavItemComponent
-              key={child.href}
-              item={child}
-              collapsed={collapsed}
-              pathname={pathname}
-              level={level + 1}
-            />
-          ))}
-        </ul>
-      </li>
-    )
-  }
-
-  return (
-    <li>
-      <Link
-        href={item.href}
-        className={cn(
-          "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-all duration-200",
-          collapsed && "justify-center px-2",
-          level > 0 && !collapsed && "pl-9",
-          isActive
-            ? "border-l-2 border-sidebar-primary bg-sidebar-accent font-semibold text-sidebar-foreground shadow-sm"
-            : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
-        )}
-        title={collapsed ? item.title : undefined}
-      >
-        <Icon className={cn(
-          "h-4 w-4 flex-shrink-0",
-          isActive ? "text-sidebar-primary" : ""
-        )} />
-        {!collapsed && <span className="truncate">{item.title}</span>}
-      </Link>
-    </li>
   )
 }

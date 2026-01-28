@@ -1,57 +1,11 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { FileText, User, Music, Settings, Shield } from "lucide-react"
 
-interface ActivityItem {
-  id: string
-  action: string
-  target: string
-  user: string
-  timestamp: string
-  type: "content" | "user" | "song" | "system" | "profile"
-}
-
-const mockActivities: ActivityItem[] = [
-  {
-    id: "1",
-    action: "Cập nhật nội dung",
-    target: "Lịch sử hình thành Binh chủng",
-    user: "Đại úy Nguyễn Văn A",
-    timestamp: "10 phút trước",
-    type: "content",
-  },
-  {
-    id: "2",
-    action: "Thêm mới hồ sơ",
-    target: "Thiếu tướng Trần Văn B",
-    user: "Thượng úy Lê Văn C",
-    timestamp: "25 phút trước",
-    type: "profile",
-  },
-  {
-    id: "3",
-    action: "Tải lên ca khúc",
-    target: "Hành khúc Tăng Thiết Giáp",
-    user: "Đại úy Nguyễn Văn A",
-    timestamp: "1 giờ trước",
-    type: "song",
-  },
-  {
-    id: "4",
-    action: "Tạo tài khoản",
-    target: "Trung úy Phạm Văn D",
-    user: "Quản trị viên",
-    timestamp: "2 giờ trước",
-    type: "user",
-  },
-  {
-    id: "5",
-    action: "Cập nhật cấu hình",
-    target: "Thiết lập bảo mật",
-    user: "Quản trị viên",
-    timestamp: "3 giờ trước",
-    type: "system",
-  },
-]
+import type { ActivityItem } from "@/lib/data/types"
+import { DashboardService } from "@/lib/services/dashboard.service"
 
 const typeIcons = {
   content: FileText,
@@ -70,6 +24,12 @@ const typeColors = {
 }
 
 export function RecentActivity() {
+  const [activities, setActivities] = useState<ActivityItem[]>([])
+
+  useEffect(() => {
+    DashboardService.getRecentActivities().then(setActivities)
+  }, [])
+
   return (
     <div className="rounded-md border border-border bg-card shadow-sm">
       <div className="border-b border-border px-4 py-3">
@@ -78,7 +38,7 @@ export function RecentActivity() {
         </h3>
       </div>
       <div className="divide-y divide-border">
-        {mockActivities.map((activity) => {
+        {activities.map((activity) => {
           const Icon = typeIcons[activity.type]
           return (
             <div

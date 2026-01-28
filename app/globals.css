@@ -124,6 +124,12 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    background-image: url('https://vipcorel.com/attachments/vector-nen-trong-dong-chuan-2025-png.25674/');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    opacity: 0.9;
   }
 }

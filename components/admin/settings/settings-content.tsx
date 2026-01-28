@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { Controller, useForm } from "react-hook-form"
 import { 
   Settings, 
   Save,
@@ -9,11 +9,9 @@ import {
   Database,
   Globe,
   Clock,
-  Lock,
   Mail,
   Server,
   HardDrive,
-  Star,
   AlertTriangle,
   CheckCircle
 } from "lucide-react"
@@ -38,13 +36,86 @@ import {
 } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { SettingsFormSchema, type SettingsFormData } from "@/lib/schemas/settings.schema"
+import { useEffect, useState } from "react"
+import type { SettingsStatusCard } from "@/lib/data/types"
+import { SettingsService } from "@/lib/services/settings.service"
+import { AdminStatsGrid, type AdminStatsItem } from "@/components/admin/shared/admin-stats-grid"
 
 export function SettingsContent() {
-  const [hasChanges, setHasChanges] = useState(false)
+  const [systemVersion, setSystemVersion] = useState("")
+  const [systemStatusCards, setSystemStatusCards] = useState<SettingsStatusCard[]>([])
+  const form = useForm<SettingsFormData>({
+    resolver: zodResolver(SettingsFormSchema),
+    defaultValues: {
+      systemName: "",
+      systemDescription: "",
+      timezone: "asia-ho_chi_minh",
+      language: "vi",
+      recordsPerPage: "20",
+      showAvatar: false,
+      compactMode: false,
 
-  const handleChange = () => {
-    setHasChanges(true)
+      passwordMinLength: "8",
+      requireUppercase: false,
+      requireNumber: false,
+      requireSpecialChar: false,
+      sessionTimeout: "30",
+      maxLoginAttempts: "5",
+      require2fa: false,
+
+      smtpHost: "",
+      smtpPort: "",
+      smtpUser: "",
+      smtpPass: "",
+      emailFrom: "",
+      notifyNewLogin: false,
+      notifyPendingContent: false,
+      notifySecurityAlerts: false,
+      notifyPeriodicReports: false,
+
+      autoBackupEnabled: false,
+      backupFrequency: "daily",
+      backupRetention: "7",
+    },
+    mode: "onChange",
+  })
+
+  useEffect(() => {
+    Promise.all([
+      SettingsService.getSettings(),
+      SettingsService.getSystemStatusCards(),
+      SettingsService.getVersion(),
+    ]).then(([settings, statusCards, version]) => {
+      form.reset(settings)
+      setSystemStatusCards(statusCards)
+      setSystemVersion(version)
+    })
+  }, [form])
+
+  const handleSave = (values: SettingsFormData) => {
+    const parsed = SettingsFormSchema.parse(values)
+    form.reset(parsed)
   }
+
+  const statusIconMap = {
+    server: Server,
+    database: Database,
+    storage: HardDrive,
+    uptime: Clock,
+  }
+
+  const statusItems: AdminStatsItem[] = systemStatusCards.map((card) => {
+    const Icon = statusIconMap[card.iconKey]
+    return {
+      id: card.id,
+      value: card.value,
+      label: card.title,
+      icon: Icon,
+      variant: card.variant,
+    }
+  })
 
   return (
     <div className="space-y-6">
@@ -64,7 +135,7 @@ export function SettingsContent() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {hasChanges && (
+          {form.formState.isDirty && (
             <Badge variant="outline" className="border-[#F57C00] text-[#F57C00]">
               <AlertTriangle className="mr-1 h-3 w-3" />
               Có thay đổi chưa lưu
@@ -72,7 +143,8 @@ export function SettingsContent() {
           )}
           <Button 
             className="bg-primary text-primary-foreground hover:bg-primary/90"
-            disabled={!hasChanges}
+            disabled={!form.formState.isDirty}
+            onClick={form.handleSubmit(handleSave)}
           >
             <Save className="mr-2 h-4 w-4" />
             Lưu cấu hình
@@ -80,53 +152,7 @@ export function SettingsContent() {
         </div>
       </div>
 
-      {/* System Status */}
-      <div className="grid grid-cols-4 gap-4">
-        <Card className="border-[#2E7D32]/20">
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#2E7D32]/10">
-              <Server className="h-6 w-6 text-[#2E7D32]" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Trạng thái Server</p>
-              <p className="text-lg font-bold text-[#2E7D32]">Hoạt động</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-accent/20">
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/10">
-              <Database className="h-6 w-6 text-accent" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Database</p>
-              <p className="text-lg font-bold text-accent">Kết nối tốt</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-primary/20">
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <HardDrive className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Bộ nhớ sử dụng</p>
-              <p className="text-lg font-bold text-primary">45.2 GB / 100 GB</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-border">
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-              <Clock className="h-6 w-6 text-muted-foreground" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Uptime</p>
-              <p className="text-lg font-bold text-foreground">99.9%</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <AdminStatsGrid items={statusItems} columns={4} />
 
       {/* Settings Tabs */}
       <Tabs defaultValue="general" className="space-y-4">
@@ -160,31 +186,47 @@ export function SettingsContent() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="system-name">Tên hệ thống</Label>
-                  <Input 
-                    id="system-name" 
-                    defaultValue="Sổ Tay Điện Tử Giáo Dục Truyền Thống"
-                    onChange={handleChange}
+                  <Controller
+                    control={form.control}
+                    name="systemName"
+                    render={({ field }) => (
+                      <Input
+                        id="system-name"
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.value)}
+                      />
+                    )}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="system-version">Phiên bản</Label>
-                  <Input id="system-version" defaultValue="1.0.0" disabled />
+                  <Input id="system-version" value={systemVersion} disabled />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="system-desc">Mô tả hệ thống</Label>
-                <Textarea 
-                  id="system-desc" 
-                  defaultValue="Hệ thống Sổ Tay Điện Tử Giáo Dục Truyền Thống - Binh chủng Tăng Thiết Giáp - Quân đội Nhân dân Việt Nam"
-                  rows={3}
-                  onChange={handleChange}
+                <Controller
+                  control={form.control}
+                  name="systemDescription"
+                  render={({ field }) => (
+                    <Textarea
+                      id="system-desc"
+                      rows={3}
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                    />
+                  )}
                 />
               </div>
               <Separator />
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="timezone">Múi giờ</Label>
-                  <Select defaultValue="asia-ho_chi_minh" onValueChange={handleChange}>
+                  <Controller
+                    control={form.control}
+                    name="timezone"
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger id="timezone">
                       <SelectValue />
                     </SelectTrigger>
@@ -192,11 +234,17 @@ export function SettingsContent() {
                       <SelectItem value="asia-ho_chi_minh">Asia/Ho_Chi_Minh (GMT+7)</SelectItem>
                       <SelectItem value="utc">UTC (GMT+0)</SelectItem>
                     </SelectContent>
-                  </Select>
+                      </Select>
+                    )}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="language">Ngôn ngữ mặc định</Label>
-                  <Select defaultValue="vi" onValueChange={handleChange}>
+                  <Controller
+                    control={form.control}
+                    name="language"
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger id="language">
                       <SelectValue />
                     </SelectTrigger>
@@ -204,7 +252,9 @@ export function SettingsContent() {
                       <SelectItem value="vi">Tiếng Việt</SelectItem>
                       <SelectItem value="en">English</SelectItem>
                     </SelectContent>
-                  </Select>
+                      </Select>
+                    )}
+                  />
                 </div>
               </div>
             </CardContent>
@@ -221,17 +271,23 @@ export function SettingsContent() {
                   <p className="font-medium">Số bản ghi mỗi trang</p>
                   <p className="text-sm text-muted-foreground">Số lượng bản ghi hiển thị trong bảng dữ liệu</p>
                 </div>
-                <Select defaultValue="20" onValueChange={handleChange}>
-                  <SelectTrigger className="w-24">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="20">20</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Controller
+                  control={form.control}
+                  name="recordsPerPage"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger className="w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -239,7 +295,13 @@ export function SettingsContent() {
                   <p className="font-medium">Hiển thị avatar</p>
                   <p className="text-sm text-muted-foreground">Hiển thị ảnh đại diện trong danh sách</p>
                 </div>
-                <Switch defaultChecked onCheckedChange={handleChange} />
+                <Controller
+                  control={form.control}
+                  name="showAvatar"
+                  render={({ field }) => (
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  )}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -247,7 +309,13 @@ export function SettingsContent() {
                   <p className="font-medium">Chế độ compact</p>
                   <p className="text-sm text-muted-foreground">Thu gọn khoảng cách giữa các phần tử</p>
                 </div>
-                <Switch onCheckedChange={handleChange} />
+                <Controller
+                  control={form.control}
+                  name="compactMode"
+                  render={({ field }) => (
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  )}
+                />
               </div>
             </CardContent>
           </Card>
@@ -266,17 +334,23 @@ export function SettingsContent() {
                   <p className="font-medium">Độ dài tối thiểu</p>
                   <p className="text-sm text-muted-foreground">Số ký tự tối thiểu của mật khẩu</p>
                 </div>
-                <Select defaultValue="8" onValueChange={handleChange}>
-                  <SelectTrigger className="w-24">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="6">6</SelectItem>
-                    <SelectItem value="8">8</SelectItem>
-                    <SelectItem value="12">12</SelectItem>
-                    <SelectItem value="16">16</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Controller
+                  control={form.control}
+                  name="passwordMinLength"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger className="w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="6">6</SelectItem>
+                        <SelectItem value="8">8</SelectItem>
+                        <SelectItem value="12">12</SelectItem>
+                        <SelectItem value="16">16</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -284,7 +358,13 @@ export function SettingsContent() {
                   <p className="font-medium">Yêu cầu chữ hoa</p>
                   <p className="text-sm text-muted-foreground">Mật khẩu phải có ít nhất 1 chữ hoa</p>
                 </div>
-                <Switch defaultChecked onCheckedChange={handleChange} />
+                <Controller
+                  control={form.control}
+                  name="requireUppercase"
+                  render={({ field }) => (
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  )}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -292,7 +372,13 @@ export function SettingsContent() {
                   <p className="font-medium">Yêu cầu số</p>
                   <p className="text-sm text-muted-foreground">Mật khẩu phải có ít nhất 1 chữ số</p>
                 </div>
-                <Switch defaultChecked onCheckedChange={handleChange} />
+                <Controller
+                  control={form.control}
+                  name="requireNumber"
+                  render={({ field }) => (
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  )}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -300,7 +386,13 @@ export function SettingsContent() {
                   <p className="font-medium">Yêu cầu ký tự đặc biệt</p>
                   <p className="text-sm text-muted-foreground">Mật khẩu phải có ít nhất 1 ký tự đặc biệt</p>
                 </div>
-                <Switch onCheckedChange={handleChange} />
+                <Controller
+                  control={form.control}
+                  name="requireSpecialChar"
+                  render={({ field }) => (
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  )}
+                />
               </div>
             </CardContent>
           </Card>
@@ -316,17 +408,23 @@ export function SettingsContent() {
                   <p className="font-medium">Thời gian hết hạn phiên</p>
                   <p className="text-sm text-muted-foreground">Tự động đăng xuất sau khoảng thời gian không hoạt động</p>
                 </div>
-                <Select defaultValue="30" onValueChange={handleChange}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="15">15 phút</SelectItem>
-                    <SelectItem value="30">30 phút</SelectItem>
-                    <SelectItem value="60">1 giờ</SelectItem>
-                    <SelectItem value="120">2 giờ</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Controller
+                  control={form.control}
+                  name="sessionTimeout"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="15">15 phút</SelectItem>
+                        <SelectItem value="30">30 phút</SelectItem>
+                        <SelectItem value="60">1 giờ</SelectItem>
+                        <SelectItem value="120">2 giờ</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -334,16 +432,22 @@ export function SettingsContent() {
                   <p className="font-medium">Số lần đăng nhập sai tối đa</p>
                   <p className="text-sm text-muted-foreground">Khóa tài khoản sau số lần đăng nhập sai</p>
                 </div>
-                <Select defaultValue="5" onValueChange={handleChange}>
-                  <SelectTrigger className="w-24">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="3">3 lần</SelectItem>
-                    <SelectItem value="5">5 lần</SelectItem>
-                    <SelectItem value="10">10 lần</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Controller
+                  control={form.control}
+                  name="maxLoginAttempts"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger className="w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="3">3 lần</SelectItem>
+                        <SelectItem value="5">5 lần</SelectItem>
+                        <SelectItem value="10">10 lần</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -351,7 +455,13 @@ export function SettingsContent() {
                   <p className="font-medium">Xác thực 2 yếu tố (2FA)</p>
                   <p className="text-sm text-muted-foreground">Bắt buộc xác thực 2 yếu tố cho tất cả người dùng</p>
                 </div>
-                <Switch onCheckedChange={handleChange} />
+                <Controller
+                  control={form.control}
+                  name="require2fa"
+                  render={({ field }) => (
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  )}
+                />
               </div>
             </CardContent>
           </Card>
@@ -368,26 +478,82 @@ export function SettingsContent() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="smtp-host">SMTP Host</Label>
-                  <Input id="smtp-host" placeholder="smtp.example.com" onChange={handleChange} />
+                  <Controller
+                    control={form.control}
+                    name="smtpHost"
+                    render={({ field }) => (
+                      <Input
+                        id="smtp-host"
+                        placeholder="smtp.example.com"
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.value)}
+                      />
+                    )}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="smtp-port">SMTP Port</Label>
-                  <Input id="smtp-port" placeholder="587" onChange={handleChange} />
+                  <Controller
+                    control={form.control}
+                    name="smtpPort"
+                    render={({ field }) => (
+                      <Input
+                        id="smtp-port"
+                        placeholder="587"
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.value)}
+                      />
+                    )}
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="smtp-user">Username</Label>
-                  <Input id="smtp-user" placeholder="user@example.com" onChange={handleChange} />
+                  <Controller
+                    control={form.control}
+                    name="smtpUser"
+                    render={({ field }) => (
+                      <Input
+                        id="smtp-user"
+                        placeholder="user@example.com"
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.value)}
+                      />
+                    )}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="smtp-pass">Password</Label>
-                  <Input id="smtp-pass" type="password" placeholder="••••••••" onChange={handleChange} />
+                  <Controller
+                    control={form.control}
+                    name="smtpPass"
+                    render={({ field }) => (
+                      <Input
+                        id="smtp-pass"
+                        type="password"
+                        placeholder="••••••••"
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.value)}
+                      />
+                    )}
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email-from">Email gửi đi</Label>
-                <Input id="email-from" placeholder="noreply@ttg.vn" onChange={handleChange} />
+                <Controller
+                  control={form.control}
+                  name="emailFrom"
+                  render={({ field }) => (
+                    <Input
+                      id="email-from"
+                      placeholder="noreply@ttg.vn"
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                    />
+                  )}
+                />
               </div>
               <Button variant="outline" className="border-primary/30 text-primary bg-transparent">
                 <Mail className="mr-2 h-4 w-4" />
@@ -407,7 +573,13 @@ export function SettingsContent() {
                   <p className="font-medium">Thông báo đăng nhập mới</p>
                   <p className="text-sm text-muted-foreground">Gửi email khi có đăng nhập từ thiết bị mới</p>
                 </div>
-                <Switch defaultChecked onCheckedChange={handleChange} />
+                <Controller
+                  control={form.control}
+                  name="notifyNewLogin"
+                  render={({ field }) => (
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  )}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -415,7 +587,13 @@ export function SettingsContent() {
                   <p className="font-medium">Thông báo nội dung chờ duyệt</p>
                   <p className="text-sm text-muted-foreground">Thông báo khi có nội dung mới cần duyệt</p>
                 </div>
-                <Switch defaultChecked onCheckedChange={handleChange} />
+                <Controller
+                  control={form.control}
+                  name="notifyPendingContent"
+                  render={({ field }) => (
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  )}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -423,7 +601,13 @@ export function SettingsContent() {
                   <p className="font-medium">Cảnh báo bảo mật</p>
                   <p className="text-sm text-muted-foreground">Thông báo khi phát hiện hoạt động đáng ngờ</p>
                 </div>
-                <Switch defaultChecked onCheckedChange={handleChange} />
+                <Controller
+                  control={form.control}
+                  name="notifySecurityAlerts"
+                  render={({ field }) => (
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  )}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -431,7 +615,13 @@ export function SettingsContent() {
                   <p className="font-medium">Báo cáo định kỳ</p>
                   <p className="text-sm text-muted-foreground">Gửi báo cáo thống kê hàng tuần</p>
                 </div>
-                <Switch onCheckedChange={handleChange} />
+                <Controller
+                  control={form.control}
+                  name="notifyPeriodicReports"
+                  render={({ field }) => (
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  )}
+                />
               </div>
             </CardContent>
           </Card>
@@ -450,7 +640,13 @@ export function SettingsContent() {
                   <p className="font-medium">Bật sao lưu tự động</p>
                   <p className="text-sm text-muted-foreground">Tự động sao lưu dữ liệu theo lịch</p>
                 </div>
-                <Switch defaultChecked onCheckedChange={handleChange} />
+                <Controller
+                  control={form.control}
+                  name="autoBackupEnabled"
+                  render={({ field }) => (
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  )}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -458,16 +654,22 @@ export function SettingsContent() {
                   <p className="font-medium">Tần suất sao lưu</p>
                   <p className="text-sm text-muted-foreground">Khoảng thời gian giữa các lần sao lưu</p>
                 </div>
-                <Select defaultValue="daily" onValueChange={handleChange}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hourly">Mỗi giờ</SelectItem>
-                    <SelectItem value="daily">Hàng ngày</SelectItem>
-                    <SelectItem value="weekly">Hàng tuần</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Controller
+                  control={form.control}
+                  name="backupFrequency"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hourly">Mỗi giờ</SelectItem>
+                        <SelectItem value="daily">Hàng ngày</SelectItem>
+                        <SelectItem value="weekly">Hàng tuần</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -475,17 +677,23 @@ export function SettingsContent() {
                   <p className="font-medium">Số bản sao lưu giữ lại</p>
                   <p className="text-sm text-muted-foreground">Số lượng bản sao lưu tối đa được lưu trữ</p>
                 </div>
-                <Select defaultValue="7" onValueChange={handleChange}>
-                  <SelectTrigger className="w-24">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="3">3 bản</SelectItem>
-                    <SelectItem value="7">7 bản</SelectItem>
-                    <SelectItem value="14">14 bản</SelectItem>
-                    <SelectItem value="30">30 bản</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Controller
+                  control={form.control}
+                  name="backupRetention"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger className="w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="3">3 bản</SelectItem>
+                        <SelectItem value="7">7 bản</SelectItem>
+                        <SelectItem value="14">14 bản</SelectItem>
+                        <SelectItem value="30">30 bản</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
             </CardContent>
           </Card>
@@ -502,8 +710,8 @@ export function SettingsContent() {
                   { date: "26/01/2026 02:00", size: "2.2 GB", status: "success" },
                   { date: "25/01/2026 02:00", size: "2.2 GB", status: "success" },
                   { date: "24/01/2026 02:00", size: "2.1 GB", status: "success" },
-                ].map((backup, index) => (
-                  <div key={index} className="flex items-center justify-between rounded-md border border-border p-3">
+                ].map((backup) => (
+                  <div key={backup.date} className="flex items-center justify-between rounded-md border border-border p-3">
                     <div className="flex items-center gap-3">
                       <CheckCircle className="h-5 w-5 text-[#2E7D32]" />
                       <div>

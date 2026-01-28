@@ -2,6 +2,7 @@ import React from "react"
 import type { Metadata, Viewport } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { Toaster } from "sonner"
 import './globals.css'
 
 const inter = Inter({ 
@@ -18,7 +19,12 @@ export const metadata: Metadata = {
   title: 'Sổ Tay Điện Tử Giáo Dục Truyền Thống | Quản Trị Hệ Thống',
   description: 'Hệ thống quản trị Sổ Tay Điện Tử Giáo Dục Truyền Thống - Binh chủng Tăng Thiết Giáp - Quân đội Nhân dân Việt Nam',
   robots: 'noindex, nofollow',
-    generator: 'v0.app'
+    generator: 'bcttg',
+  icons: {
+    icon: '/bcttg.ico',
+    shortcut: '/bcttg.ico',
+    apple: '/bcttg.ico',
+  },
 }
 
 export const viewport: Viewport = {
@@ -37,6 +43,7 @@ export default function RootLayout({
     <html lang="vi">
       <body className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}>
         {children}
+        <Toaster richColors />
         <Analytics />
       </body>
     </html>

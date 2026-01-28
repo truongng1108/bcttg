@@ -1,29 +1,21 @@
 "use client"
 
-import React from "react"
-
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Save, X, ArrowLeft, Upload, ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { FormField } from "../shared/form-field"
+import { FormFieldRHF } from "../shared/form-field-rhf"
 import { ConfirmDialog } from "../shared/confirm-dialog"
+import { rankOptions, unitOptions } from "@/lib/data/mock/options"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Controller, useForm } from "react-hook-form"
+import { ProfileFormSchema, type ProfileFormData } from "@/lib/schemas/profile.schema"
 
 interface ProfileFormProps {
-  mode: "create" | "edit"
-  profileType: "thu-truong" | "chien-si" | "anh-hung"
-  initialData?: {
-    rank: string
-    fullName: string
-    birthDate: string
-    birthPlace: string
-    joinDate: string
-    position: string
-    unit: string
-    achievements: string
-    biography: string
-  }
-  onBack: () => void
-  onSave: (data: unknown) => void
+  readonly mode: "create" | "edit"
+  readonly profileType: "thu-truong" | "chien-si" | "anh-hung"
+  readonly initialData?: Partial<ProfileFormData>
+  readonly onBack: () => void
+  readonly onSave: (data: ProfileFormData) => void
 }
 
 const profileTypeLabels = {
@@ -32,38 +24,6 @@ const profileTypeLabels = {
   "anh-hung": "Anh hùng",
 }
 
-const rankOptions = [
-  { value: "binh-nhi", label: "Binh nhì" },
-  { value: "binh-nhat", label: "Binh nhất" },
-  { value: "ha-si", label: "Hạ sĩ" },
-  { value: "trung-si", label: "Trung sĩ" },
-  { value: "thuong-si", label: "Thượng sĩ" },
-  { value: "thieu-uy", label: "Thiếu úy" },
-  { value: "trung-uy", label: "Trung úy" },
-  { value: "thuong-uy", label: "Thượng úy" },
-  { value: "dai-uy", label: "Đại úy" },
-  { value: "thieu-ta", label: "Thiếu tá" },
-  { value: "trung-ta", label: "Trung tá" },
-  { value: "thuong-ta", label: "Thượng tá" },
-  { value: "dai-ta", label: "Đại tá" },
-  { value: "thieu-tuong", label: "Thiếu tướng" },
-  { value: "trung-tuong", label: "Trung tướng" },
-  { value: "thuong-tuong", label: "Thượng tướng" },
-  { value: "dai-tuong", label: "Đại tướng" },
-]
-
-const unitOptions = [
-  { value: "phong-chinh-tri", label: "Phòng Chính trị" },
-  { value: "phong-ky-thuat", label: "Phòng Kỹ thuật" },
-  { value: "phong-hau-can", label: "Phòng Hậu cần" },
-  { value: "ban-chi-huy", label: "Ban Chỉ huy" },
-  { value: "tieu-doan-1", label: "Tiểu đoàn 1" },
-  { value: "tieu-doan-2", label: "Tiểu đoàn 2" },
-  { value: "tieu-doan-3", label: "Tiểu đoàn 3" },
-  { value: "lien-doan-1", label: "Liên đoàn 1" },
-  { value: "lien-doan-2", label: "Liên đoàn 2" },
-]
-
 export function ProfileForm({
   mode,
   profileType,
@@ -71,57 +31,59 @@ export function ProfileForm({
   onBack,
   onSave,
 }: ProfileFormProps) {
-  const [formData, setFormData] = useState({
-    rank: initialData?.rank ?? "",
-    fullName: initialData?.fullName ?? "",
-    birthDate: initialData?.birthDate ?? "",
-    birthPlace: initialData?.birthPlace ?? "",
-    joinDate: initialData?.joinDate ?? "",
-    position: initialData?.position ?? "",
-    unit: initialData?.unit ?? "",
-    achievements: initialData?.achievements ?? "",
-    biography: initialData?.biography ?? "",
-  })
-
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
-  const [errors, setErrors] = useState<Record<string, string>>({})
   const [previewImage, setPreviewImage] = useState<string | null>(null)
 
-  const handleChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: "" }))
+  const form = useForm<ProfileFormData>({
+    resolver: zodResolver(ProfileFormSchema),
+    defaultValues: {
+      rank: initialData?.rank ?? "",
+      fullName: initialData?.fullName ?? "",
+      birthDate: initialData?.birthDate ?? "",
+      birthPlace: initialData?.birthPlace ?? "",
+      joinDate: initialData?.joinDate ?? "",
+      position: initialData?.position ?? "",
+      unit: initialData?.unit ?? "",
+      achievements: initialData?.achievements ?? "",
+      biography: initialData?.biography ?? "",
+      avatar: null,
+      publicationStatus: initialData?.publicationStatus ?? "draft",
+    },
+  })
+
+  useEffect(() => {
+    form.reset({
+      rank: initialData?.rank ?? "",
+      fullName: initialData?.fullName ?? "",
+      birthDate: initialData?.birthDate ?? "",
+      birthPlace: initialData?.birthPlace ?? "",
+      joinDate: initialData?.joinDate ?? "",
+      position: initialData?.position ?? "",
+      unit: initialData?.unit ?? "",
+      achievements: initialData?.achievements ?? "",
+      biography: initialData?.biography ?? "",
+      avatar: null,
+      publicationStatus: initialData?.publicationStatus ?? "draft",
+    })
+  }, [form, initialData])
+
+  const avatarFile = form.watch("avatar")
+
+  useEffect(() => {
+    if (!(avatarFile instanceof File)) {
+      setPreviewImage(null)
+      return
     }
-  }
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {}
-
-    if (!formData.rank) newErrors.rank = "Vui lòng chọn cấp bậc"
-    if (!formData.fullName.trim())
-      newErrors.fullName = "Vui lòng nhập họ và tên"
-    if (!formData.birthDate) newErrors.birthDate = "Vui lòng nhập ngày sinh"
-    if (!formData.unit) newErrors.unit = "Vui lòng chọn đơn vị"
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = () => {
-    if (validateForm()) {
-      onSave(formData)
+    const url = URL.createObjectURL(avatarFile)
+    setPreviewImage(url)
+    return () => {
+      URL.revokeObjectURL(url)
     }
-  }
+  }, [avatarFile])
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        setPreviewImage(event.target?.result as string)
-      }
-      reader.readAsDataURL(file)
-    }
+  const onSubmit = (values: ProfileFormData) => {
+    const parsed = ProfileFormSchema.parse(values)
+    onSave(parsed)
   }
 
   return (
@@ -163,72 +125,61 @@ export function ProfileForm({
 
             <div className="space-y-6 p-6">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <FormField
+                <FormFieldRHF
                   label="Cấp bậc"
                   name="rank"
                   type="select"
                   required
-                  value={formData.rank}
-                  onChange={(v) => handleChange("rank", v)}
+                  control={form.control}
                   options={rankOptions}
-                  error={errors.rank}
                 />
-                <FormField
+                <FormFieldRHF
                   label="Họ và tên"
                   name="fullName"
                   required
                   placeholder="Nhập họ và tên đầy đủ"
-                  value={formData.fullName}
-                  onChange={(v) => handleChange("fullName", v)}
-                  error={errors.fullName}
+                  control={form.control}
                 />
               </div>
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <FormField
+                <FormFieldRHF
                   label="Ngày sinh"
                   name="birthDate"
                   required
                   placeholder="DD/MM/YYYY"
-                  value={formData.birthDate}
-                  onChange={(v) => handleChange("birthDate", v)}
-                  error={errors.birthDate}
+                  control={form.control}
                 />
-                <FormField
+                <FormFieldRHF
                   label="Quê quán"
                   name="birthPlace"
                   placeholder="Nhập quê quán"
-                  value={formData.birthPlace}
-                  onChange={(v) => handleChange("birthPlace", v)}
+                  control={form.control}
                 />
               </div>
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <FormField
+                <FormFieldRHF
                   label="Ngày nhập ngũ"
                   name="joinDate"
                   placeholder="DD/MM/YYYY"
-                  value={formData.joinDate}
-                  onChange={(v) => handleChange("joinDate", v)}
+                  control={form.control}
                 />
-                <FormField
+                <FormFieldRHF
                   label="Chức vụ"
                   name="position"
                   placeholder="Nhập chức vụ"
-                  value={formData.position}
-                  onChange={(v) => handleChange("position", v)}
+                  control={form.control}
                 />
               </div>
 
-              <FormField
+              <FormFieldRHF
                 label="Đơn vị"
                 name="unit"
                 type="select"
                 required
-                value={formData.unit}
-                onChange={(v) => handleChange("unit", v)}
+                control={form.control}
                 options={unitOptions}
-                error={errors.unit}
               />
             </div>
           </div>
@@ -242,22 +193,20 @@ export function ProfileForm({
             </div>
 
             <div className="space-y-6 p-6">
-              <FormField
+              <FormFieldRHF
                 label="Thành tích nổi bật"
                 name="achievements"
                 type="textarea"
                 placeholder="Nhập các thành tích nổi bật..."
-                value={formData.achievements}
-                onChange={(v) => handleChange("achievements", v)}
+                control={form.control}
                 rows={4}
               />
-              <FormField
+              <FormFieldRHF
                 label="Tiểu sử"
                 name="biography"
                 type="textarea"
                 placeholder="Nhập tiểu sử chi tiết..."
-                value={formData.biography}
-                onChange={(v) => handleChange("biography", v)}
+                control={form.control}
                 rows={8}
               />
             </div>
@@ -287,18 +236,28 @@ export function ProfileForm({
                   )}
                 </div>
 
-                <label className="cursor-pointer">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageUpload}
-                  />
-                  <span className="inline-flex items-center gap-2 rounded border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted">
-                    <Upload className="h-4 w-4" />
-                    Tải ảnh lên
-                  </span>
-                </label>
+                <Controller
+                  control={form.control}
+                  name="avatar"
+                  render={({ field }) => (
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onBlur={field.onBlur}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] ?? null
+                          field.onChange(file)
+                        }}
+                      />
+                      <span className="inline-flex items-center gap-2 rounded border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted">
+                        <Upload className="h-4 w-4" />
+                        Tải ảnh lên
+                      </span>
+                    </label>
+                  )}
+                />
 
                 <p className="mt-3 text-center text-xs text-muted-foreground">
                   Định dạng: JPG, PNG
@@ -320,10 +279,11 @@ export function ProfileForm({
             </div>
 
             <div className="p-6">
-              <FormField
+              <FormFieldRHF
                 label="Trạng thái"
-                name="status"
+                name="publicationStatus"
                 type="select"
+                control={form.control}
                 options={[
                   { value: "draft", label: "Bản nháp" },
                   { value: "pending", label: "Chờ duyệt" },
@@ -341,7 +301,13 @@ export function ProfileForm({
         <div className="flex items-center justify-end gap-3">
           <Button
             variant="outline"
-            onClick={() => setCancelDialogOpen(true)}
+            onClick={() => {
+              if (form.formState.isDirty) {
+                setCancelDialogOpen(true)
+                return
+              }
+              onBack()
+            }}
             className="gap-2"
           >
             <X className="h-4 w-4" />
@@ -351,7 +317,7 @@ export function ProfileForm({
             Lưu bản nháp
           </Button>
           <Button
-            onClick={handleSubmit}
+            onClick={form.handleSubmit(onSubmit)}
             className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Save className="h-4 w-4" />

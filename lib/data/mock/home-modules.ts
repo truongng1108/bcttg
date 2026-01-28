@@ -1,0 +1,68 @@
+import type { HomeModule } from "../types"
+import { ImageIcon, BookOpen, Star, Users, Award, Music, FileText } from "lucide-react"
+
+export const initialModules: HomeModule[] = [
+  {
+    id: "banner",
+    name: "Banner Chính",
+    description: "Hình ảnh banner xoay vòng trên đầu trang chủ",
+    icon: ImageIcon,
+    enabled: true,
+    order: 1,
+    itemCount: 5,
+  },
+  {
+    id: "truyen-thong",
+    name: "Truyền Thống Binh Chủng",
+    description: "Hiển thị các bài viết về truyền thống binh chủng",
+    icon: BookOpen,
+    enabled: true,
+    order: 2,
+    itemCount: 12,
+  },
+  {
+    id: "net-tieu-bieu",
+    name: "Nét Tiêu Biểu",
+    description: "Các nét tiêu biểu nổi bật của đơn vị",
+    icon: Star,
+    enabled: true,
+    order: 3,
+    itemCount: 8,
+  },
+  {
+    id: "thu-truong",
+    name: "Hồ Sơ Thủ Trưởng",
+    description: "Thông tin các thủ trưởng qua các thời kỳ",
+    icon: Users,
+    enabled: true,
+    order: 4,
+    itemCount: 24,
+  },
+  {
+    id: "anh-hung",
+    name: "Anh Hùng & Gương Tiêu Biểu",
+    description: "Vinh danh các anh hùng và gương tiêu biểu",
+    icon: Award,
+    enabled: true,
+    order: 5,
+    itemCount: 45,
+  },
+  {
+    id: "ca-khuc",
+    name: "Ca Khúc Truyền Thống",
+    description: "Danh sách ca khúc truyền thống binh chủng",
+    icon: Music,
+    enabled: false,
+    order: 6,
+    itemCount: 18,
+  },
+  {
+    id: "tin-tuc",
+    name: "Tin Tức & Sự Kiện",
+    description: "Các tin tức và sự kiện mới nhất",
+    icon: FileText,
+    enabled: false,
+    order: 7,
+    itemCount: 0,
+  },
+]

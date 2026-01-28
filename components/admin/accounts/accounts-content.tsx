@@ -1,120 +1,54 @@
 "use client"
 
-import { useState } from "react"
-import { Plus, Eye, Pencil, Lock, Trash2, Download } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Plus, Lock, Trash2, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { DataTable, type Column } from "../shared/data-table"
-import { StatusBadge, type StatusType } from "../shared/status-badge"
-import { ConfirmDialog } from "../shared/confirm-dialog"
-
-interface Account {
-  id: string
-  rank: string
-  fullName: string
-  username: string
-  unit: string
-  role: string
-  status: StatusType
-  lastLogin: string
-  createdAt: string
-}
-
-const mockAccounts: Account[] = [
-  {
-    id: "1",
-    rank: "Đại úy",
-    fullName: "Nguyễn Văn A",
-    username: "nguyenvana",
-    unit: "Phòng Chính trị",
-    role: "Quản trị viên",
-    status: "active",
-    lastLogin: "27/01/2026 14:30",
-    createdAt: "15/03/2024",
-  },
-  {
-    id: "2",
-    rank: "Thượng úy",
-    fullName: "Lê Văn B",
-    username: "levanb",
-    unit: "Tiểu đoàn 1",
-    role: "Biên tập viên",
-    status: "active",
-    lastLogin: "27/01/2026 10:15",
-    createdAt: "20/05/2024",
-  },
-  {
-    id: "3",
-    rank: "Trung úy",
-    fullName: "Trần Văn C",
-    username: "tranvanc",
-    unit: "Tiểu đoàn 2",
-    role: "Biên tập viên",
-    status: "inactive",
-    lastLogin: "15/01/2026 08:45",
-    createdAt: "10/08/2024",
-  },
-  {
-    id: "4",
-    rank: "Thiếu tá",
-    fullName: "Phạm Văn D",
-    username: "phamvand",
-    unit: "Ban Chỉ huy",
-    role: "Chỉ huy",
-    status: "active",
-    lastLogin: "26/01/2026 16:20",
-    createdAt: "01/02/2024",
-  },
-  {
-    id: "5",
-    rank: "Đại úy",
-    fullName: "Hoàng Văn E",
-    username: "hoangvane",
-    unit: "Phòng Kỹ thuật",
-    role: "Biên tập viên",
-    status: "locked",
-    lastLogin: "01/12/2025 09:00",
-    createdAt: "25/06/2024",
-  },
-  {
-    id: "6",
-    rank: "Thượng úy",
-    fullName: "Vũ Văn F",
-    username: "vuvanf",
-    unit: "Tiểu đoàn 3",
-    role: "Người dùng",
-    status: "active",
-    lastLogin: "27/01/2026 11:45",
-    createdAt: "12/09/2024",
-  },
-  {
-    id: "7",
-    rank: "Trung úy",
-    fullName: "Đinh Văn G",
-    username: "dinhvang",
-    unit: "Phòng Chính trị",
-    role: "Biên tập viên",
-    status: "active",
-    lastLogin: "26/01/2026 14:00",
-    createdAt: "05/11/2024",
-  },
-  {
-    id: "8",
-    rank: "Đại úy",
-    fullName: "Bùi Văn H",
-    username: "buivanh",
-    unit: "Tiểu đoàn 1",
-    role: "Chỉ huy",
-    status: "pending",
-    lastLogin: "-",
-    createdAt: "20/01/2026",
-  },
-]
+import { DataTable, type Column } from "@/components/admin/shared/data-table"
+import { StatusBadge, type StatusType } from "@/components/admin/shared/status-badge"
+import { ConfirmDialog } from "@/components/admin/shared/confirm-dialog"
+import type { Account, SelectOption } from "@/lib/data/types"
+import { AccountsService } from "@/lib/services/accounts.service"
+import { PageHeader } from "@/components/admin/shared/page-header"
+import { OptionsService } from "@/lib/services/options.service"
+import { filterByFieldValue, filterBySearch } from "@/lib/utils/filters"
+import { toast } from "sonner"
+import { AdminLoadingState } from "@/components/admin/shared/admin-loading-state"
+import { AdminSection } from "@/components/admin/shared/admin-section"
+import { RoleBadge } from "@/components/admin/shared/role-badge"
 
 export function AccountsContent() {
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [searchQuery, setSearchQuery] = useState("")
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({})
   const [currentPage, setCurrentPage] = useState(1)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isMutating, setIsMutating] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [lockDialogOpen, setLockDialogOpen] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
+  const [roleOptions, setRoleOptions] = useState<SelectOption[]>([])
+  const [unitOptions, setUnitOptions] = useState<SelectOption[]>([])
+  const [statusOptions, setStatusOptions] = useState<SelectOption[]>([])
+
+  useEffect(() => {
+    setIsLoading(true)
+    AccountsService.getAll()
+      .then(setAccounts)
+      .catch(() => toast.error("Không tải được danh sách tài khoản"))
+      .finally(() => setIsLoading(false))
+  }, [])
+
+  useEffect(() => {
+    Promise.all([
+      OptionsService.getRoles(),
+      OptionsService.getUnits(),
+      OptionsService.getAccountStatuses(),
+    ]).then(([roles, units, statuses]) => {
+      setRoleOptions(roles)
+      setUnitOptions(units)
+      setStatusOptions(statuses)
+    })
+  }, [])
 
   const columns: Column<Account>[] = [
     {
@@ -134,9 +68,7 @@ export function AccountsContent() {
     {
       key: "username",
       title: "Tên đăng nhập",
-      render: (value) => (
-        <span className="font-mono text-xs">{String(value)}</span>
-      ),
+      render: (_, row) => <span className="font-mono text-xs">{row.username}</span>,
     },
     {
       key: "unit",
@@ -146,10 +78,8 @@ export function AccountsContent() {
     {
       key: "role",
       title: "Vai trò",
-      render: (value) => (
-        <span className="rounded bg-secondary/10 px-2 py-0.5 text-xs font-medium text-secondary">
-          {String(value)}
-        </span>
+      render: (_, row) => (
+        <RoleBadge role={row.role} />
       ),
     },
     {
@@ -167,22 +97,6 @@ export function AccountsContent() {
       title: "Thao tác",
       render: (_, row) => (
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            title="Xem chi tiết"
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            title="Chỉnh sửa"
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -216,73 +130,118 @@ export function AccountsContent() {
     {
       key: "role",
       label: "Vai trò",
-      options: [
-        { value: "admin", label: "Quản trị viên" },
-        { value: "editor", label: "Biên tập viên" },
-        { value: "commander", label: "Chỉ huy" },
-        { value: "user", label: "Người dùng" },
-      ],
+      options: roleOptions,
     },
     {
       key: "status",
       label: "Trạng thái",
-      options: [
-        { value: "active", label: "Hoạt động" },
-        { value: "inactive", label: "Không hoạt động" },
-        { value: "locked", label: "Đã khóa" },
-        { value: "pending", label: "Chờ duyệt" },
-      ],
+      options: statusOptions,
     },
     {
       key: "unit",
       label: "Đơn vị",
-      options: [
-        { value: "politics", label: "Phòng Chính trị" },
-        { value: "battalion1", label: "Tiểu đoàn 1" },
-        { value: "battalion2", label: "Tiểu đoàn 2" },
-        { value: "battalion3", label: "Tiểu đoàn 3" },
-        { value: "command", label: "Ban Chỉ huy" },
-      ],
+      options: unitOptions,
     },
   ]
 
-  return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">
-            Quản lý Tài khoản
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Quản lý tài khoản người dùng hệ thống
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" className="gap-2 bg-transparent">
-            <Download className="h-4 w-4" />
-            Xuất Excel
-          </Button>
-          <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
-            <Plus className="h-4 w-4" />
-            Thêm tài khoản
-          </Button>
-        </div>
-      </div>
+  const filteredAccounts = (() => {
+    let result = accounts
+    result = filterBySearch(result, searchQuery, ["fullName", "username"])
+    result = filterByFieldValue(result, filterValues.role ?? "all", "role")
+    result = filterByFieldValue(result, filterValues.unit ?? "all", "unit")
+    result = filterByFieldValue(result, filterValues.status ?? "all", "status")
+    return result
+  })()
 
-      {/* Data Table */}
+  const confirmDelete = async () => {
+    if (!selectedAccount) return
+    if (isMutating) return
+    setIsMutating(true)
+    try {
+      const ok = await AccountsService.delete(selectedAccount.id)
+      if (ok) {
+        const next = await AccountsService.getAll()
+        setAccounts(next)
+        toast.success("Đã xóa tài khoản")
+      } else {
+        toast.error("Không tìm thấy tài khoản để xóa")
+      }
+    } catch {
+      toast.error("Xóa tài khoản thất bại")
+    } finally {
+      setIsMutating(false)
+      setDeleteDialogOpen(false)
+      setSelectedAccount(null)
+    }
+  }
+
+  const confirmToggleLock = async () => {
+    if (!selectedAccount) return
+    if (isMutating) return
+    setIsMutating(true)
+    try {
+      const nextStatus: StatusType =
+        selectedAccount.status === "locked" ? "active" : "locked"
+      await AccountsService.update(selectedAccount.id, { status: nextStatus })
+      const next = await AccountsService.getAll()
+      setAccounts(next)
+      toast.success(nextStatus === "locked" ? "Đã khóa tài khoản" : "Đã mở khóa tài khoản")
+    } catch {
+      toast.error("Cập nhật trạng thái tài khoản thất bại")
+    } finally {
+      setIsMutating(false)
+      setLockDialogOpen(false)
+      setSelectedAccount(null)
+    }
+  }
+
+  return (
+    <AdminSection
+      header={
+        <PageHeader
+          title="Quản lý Tài khoản"
+          description="Quản lý tài khoản người dùng hệ thống"
+          actions={
+            <>
+              <Button variant="outline" className="gap-2 bg-transparent">
+                <Download className="h-4 w-4" />
+                Xuất Excel
+              </Button>
+              <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
+                <Plus className="h-4 w-4" />
+                Thêm tài khoản
+              </Button>
+            </>
+          }
+        />
+      }
+    >
+      {isLoading && <AdminLoadingState />}
+
       <DataTable
         columns={columns}
-        data={mockAccounts}
+        data={filteredAccounts}
         searchPlaceholder="Tìm theo tên, tên đăng nhập..."
+        onSearch={(value) => {
+          setSearchQuery(value)
+          setCurrentPage(1)
+        }}
         filters={filters}
-        totalItems={mockAccounts.length}
+        filterValues={filterValues}
+        onFilterChange={(key, value) => {
+          setFilterValues((prev) => ({ ...prev, [key]: value }))
+          setCurrentPage(1)
+        }}
+        onClearFilters={() => {
+          setFilterValues({})
+          setCurrentPage(1)
+        }}
+        totalItems={filteredAccounts.length}
         currentPage={currentPage}
         pageSize={10}
         onPageChange={setCurrentPage}
       />
 
-      {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
@@ -291,13 +250,9 @@ export function AccountsContent() {
         confirmText="Xóa tài khoản"
         variant="danger"
         icon="delete"
-        onConfirm={() => {
-          // Handle delete
-          setDeleteDialogOpen(false)
-        }}
+        onConfirm={confirmDelete}
       />
 
-      {/* Lock Confirmation Dialog */}
       <ConfirmDialog
         open={lockDialogOpen}
         onOpenChange={setLockDialogOpen}
@@ -316,11 +271,8 @@ export function AccountsContent() {
         }
         variant="warning"
         icon="lock"
-        onConfirm={() => {
-          // Handle lock/unlock
-          setLockDialogOpen(false)
-        }}
+        onConfirm={confirmToggleLock}
       />
-    </div>
+    </AdminSection>
   )
 }

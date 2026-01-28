@@ -16,39 +16,7 @@ import {
   Line,
 } from "recharts"
 
-const contentData = [
-  { name: "T1", value: 45 },
-  { name: "T2", value: 52 },
-  { name: "T3", value: 48 },
-  { name: "T4", value: 61 },
-  { name: "T5", value: 55 },
-  { name: "T6", value: 67 },
-  { name: "T7", value: 72 },
-  { name: "T8", value: 58 },
-  { name: "T9", value: 64 },
-  { name: "T10", value: 78 },
-  { name: "T11", value: 82 },
-  { name: "T12", value: 91 },
-]
-
-// Màu đỏ - vàng - nâu (không xanh hiện đại)
-const categoryData = [
-  { name: "Truyền thống", value: 35, color: "#C62828" },
-  { name: "Nét tiêu biểu", value: 28, color: "#B71C1C" },
-  { name: "Hồ sơ thủ trưởng", value: 15, color: "#C9A227" },
-  { name: "Hồ sơ chiến sĩ", value: 45, color: "#D4A574" },
-  { name: "Ca khúc", value: 22, color: "#8B4513" },
-]
-
-const accessData = [
-  { name: "T2", value: 120 },
-  { name: "T3", value: 145 },
-  { name: "T4", value: 132 },
-  { name: "T5", value: 167 },
-  { name: "T6", value: 189 },
-  { name: "T7", value: 156 },
-  { name: "CN", value: 98 },
-]
+import { contentData, categoryData, accessData } from "@/lib/data/mock/dashboard"
 
 export function ContentChart() {
   return (

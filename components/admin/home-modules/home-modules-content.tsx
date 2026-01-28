@@ -1,23 +1,11 @@
 "use client"
 
-import { useState } from "react"
-import { 
-  GripVertical, 
-  Eye, 
-  EyeOff, 
-  Settings, 
-  Star,
-  ImageIcon,
-  FileText,
-  Music,
-  Users,
-  Award,
-  BookOpen
-} from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useEffect, useMemo, useState } from "react"
+import { Star } from "lucide-react"
+import { DndContext, type DragEndEvent, closestCenter } from "@dnd-kit/core"
+import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
@@ -26,81 +14,33 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-
-// Mock data cho các module trang chủ
-const initialModules = [
-  {
-    id: "banner",
-    name: "Banner Chính",
-    description: "Hình ảnh banner xoay vòng trên đầu trang chủ",
-    icon: ImageIcon,
-    enabled: true,
-    order: 1,
-    itemCount: 5,
-  },
-  {
-    id: "truyen-thong",
-    name: "Truyền Thống Binh Chủng",
-    description: "Hiển thị các bài viết về truyền thống binh chủng",
-    icon: BookOpen,
-    enabled: true,
-    order: 2,
-    itemCount: 12,
-  },
-  {
-    id: "net-tieu-bieu",
-    name: "Nét Tiêu Biểu",
-    description: "Các nét tiêu biểu nổi bật của đơn vị",
-    icon: Star,
-    enabled: true,
-    order: 3,
-    itemCount: 8,
-  },
-  {
-    id: "thu-truong",
-    name: "Hồ Sơ Thủ Trưởng",
-    description: "Thông tin các thủ trưởng qua các thời kỳ",
-    icon: Users,
-    enabled: true,
-    order: 4,
-    itemCount: 24,
-  },
-  {
-    id: "anh-hung",
-    name: "Anh Hùng & Gương Tiêu Biểu",
-    description: "Vinh danh các anh hùng và gương tiêu biểu",
-    icon: Award,
-    enabled: true,
-    order: 5,
-    itemCount: 45,
-  },
-  {
-    id: "ca-khuc",
-    name: "Ca Khúc Truyền Thống",
-    description: "Danh sách ca khúc truyền thống binh chủng",
-    icon: Music,
-    enabled: false,
-    order: 6,
-    itemCount: 18,
-  },
-  {
-    id: "tin-tuc",
-    name: "Tin Tức & Sự Kiện",
-    description: "Các tin tức và sự kiện mới nhất",
-    icon: FileText,
-    enabled: false,
-    order: 7,
-    itemCount: 0,
-  },
-]
+import type { HomeModule } from "@/lib/data/types"
+import { HomeModulesService } from "@/lib/services/home-modules.service"
+import { FormFieldRHF } from "../shared/form-field-rhf"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import { HomeModuleEditFormSchema, type HomeModuleEditFormData } from "@/lib/schemas/home-module.schema"
+import { HomeModuleSortableCard } from "@/components/admin/home-modules/home-module-sortable-card"
+import { toast } from "sonner"
 
 export function HomeModulesContent() {
-  const [modules, setModules] = useState(initialModules)
-  const [editingModule, setEditingModule] = useState<typeof initialModules[0] | null>(null)
+  const [modules, setModules] = useState<HomeModule[]>([])
+  const [baselineModules, setBaselineModules] = useState<HomeModule[]>([])
+  const [editingModule, setEditingModule] = useState<HomeModule | null>(null)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
+
+  const editForm = useForm<HomeModuleEditFormData>({
+    resolver: zodResolver(HomeModuleEditFormSchema),
+    defaultValues: { name: "", description: "", order: "" },
+    mode: "onChange",
+  })
+
+  useEffect(() => {
+    HomeModulesService.getAll().then((data) => {
+      setModules(data)
+      setBaselineModules(data)
+    })
+  }, [])
 
   const toggleModule = (id: string) => {
     setModules(prev => 
@@ -108,13 +48,117 @@ export function HomeModulesContent() {
     )
   }
 
-  const openEditDialog = (module: typeof initialModules[0]) => {
+  const openEditDialog = (module: HomeModule) => {
     setEditingModule(module)
     setEditDialogOpen(true)
   }
 
+  useEffect(() => {
+    if (!editDialogOpen) {
+      editForm.reset({ name: "", description: "", order: "" })
+      setEditingModule(null)
+      return
+    }
+
+    if (editingModule) {
+      editForm.reset({
+        name: editingModule.name,
+        description: editingModule.description,
+        order: String(editingModule.order),
+      })
+    }
+  }, [editDialogOpen, editForm, editingModule])
+
+  const handleEditSubmit = (values: HomeModuleEditFormData) => {
+    if (!editingModule) return
+    const parsed = HomeModuleEditFormSchema.parse(values)
+    const orderNumber = parsed.order ? Number(parsed.order) : editingModule.order
+    const normalizedOrder = Number.isFinite(orderNumber) ? orderNumber : editingModule.order
+
+    setModules(prev =>
+      prev.map(m =>
+        m.id === editingModule.id
+          ? { ...m, name: parsed.name, description: parsed.description || "", order: normalizedOrder }
+          : m
+      )
+    )
+
+    setEditDialogOpen(false)
+  }
+
   const enabledCount = modules.filter(m => m.enabled).length
   const disabledCount = modules.filter(m => !m.enabled).length
+  const sortedModules = [...modules].sort((a, b) => a.order - b.order)
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over) {
+      return
+    }
+    if (active.id === over.id) {
+      return
+    }
+    setModules(prev => {
+      const oldIndex = prev.findIndex(module => module.id === active.id)
+      const newIndex = prev.findIndex(module => module.id === over.id)
+      if (oldIndex === -1 || newIndex === -1) {
+        return prev
+      }
+      const reordered = arrayMove(prev, oldIndex, newIndex).map((module, index) => ({
+        ...module,
+        order: index + 1,
+      }))
+      return reordered
+    })
+  }
+
+  const resetChanges = () => {
+    setModules(baselineModules)
+  }
+
+  const areModuleListsEqual = (next: HomeModule[], baseline: HomeModule[]) => {
+    if (next.length !== baseline.length) {
+      return false
+    }
+    return next.every((module, index) => {
+      const base = baseline[index]
+      if (!base) {
+        return false
+      }
+      if (module.id !== base.id) {
+        return false
+      }
+      if (module.order !== base.order) {
+        return false
+      }
+      if (module.enabled !== base.enabled) {
+        return false
+      }
+      if (module.name !== base.name) {
+        return false
+      }
+      if (module.description !== base.description) {
+        return false
+      }
+      return true
+    })
+  }
+
+  const isDirty = useMemo(
+    () => !areModuleListsEqual(modules, baselineModules),
+    [modules, baselineModules],
+  )
+
+  const handleSaveConfiguration = async () => {
+    if (!isDirty) {
+      return
+    }
+    const ordered = [...modules].sort((a, b) => a.order - b.order)
+    const saved = await HomeModulesService.saveAll(ordered)
+    setModules(saved)
+    setBaselineModules(saved)
+    toast.success("Đã lưu cấu hình module trang chủ")
+  }
 
   return (
     <div className="space-y-6">
@@ -155,93 +199,39 @@ export function HomeModulesContent() {
         </CardContent>
       </Card>
 
-      {/* Module List */}
-      <div className="space-y-3">
-        {modules.sort((a, b) => a.order - b.order).map((module, index) => {
-          const Icon = module.icon
-          return (
-            <Card 
-              key={module.id} 
-              className={`transition-all ${
-                module.enabled 
-                  ? "border-primary/20 bg-card" 
-                  : "border-border bg-muted/30 opacity-70"
-              }`}
-            >
-              <CardContent className="flex items-center gap-4 p-4">
-                {/* Drag Handle */}
-                <div className="cursor-move text-muted-foreground hover:text-foreground">
-                  <GripVertical className="h-5 w-5" />
-                </div>
+      <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCenter}>
+        <SortableContext
+          items={sortedModules.map(module => module.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-3">
+            {sortedModules.map((module, index) => (
+              <HomeModuleSortableCard
+                key={module.id}
+                module={module}
+                index={index}
+                onToggle={toggleModule}
+                onOpenEdit={openEditDialog}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
-                {/* Order Number */}
-                <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-primary/30 bg-primary/10 text-sm font-bold text-primary">
-                  {index + 1}
-                </div>
-
-                {/* Icon */}
-                <div className={`flex h-10 w-10 items-center justify-center rounded-md ${
-                  module.enabled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-                }`}>
-                  <Icon className="h-5 w-5" />
-                </div>
-
-                {/* Info */}
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className={`font-semibold ${module.enabled ? "text-foreground" : "text-muted-foreground"}`}>
-                      {module.name}
-                    </h3>
-                    <Badge variant={module.enabled ? "default" : "secondary"} className="text-xs">
-                      {module.itemCount} mục
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{module.description}</p>
-                </div>
-
-                {/* Status */}
-                <div className="flex items-center gap-2 text-sm">
-                  {module.enabled ? (
-                    <span className="flex items-center gap-1 text-primary">
-                      <Eye className="h-4 w-4" />
-                      Hiển thị
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <EyeOff className="h-4 w-4" />
-                      Đang ẩn
-                    </span>
-                  )}
-                </div>
-
-                {/* Toggle */}
-                <Switch
-                  checked={module.enabled}
-                  onCheckedChange={() => toggleModule(module.id)}
-                />
-
-                {/* Settings Button */}
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => openEditDialog(module)}
-                  className="border-border hover:border-primary/50 hover:bg-primary/10"
-                >
-                  <Settings className="h-4 w-4" />
-                  <span className="sr-only">Cài đặt module</span>
-                </Button>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
-
-      {/* Save Button */}
       <div className="flex justify-end gap-3 border-t border-border pt-4">
-        <Button variant="outline" className="border-border bg-transparent">
+        <Button
+          variant="outline"
+          className="border-border bg-transparent"
+          onClick={resetChanges}
+          disabled={!isDirty}
+        >
           Hủy thay đổi
         </Button>
-        <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+        <Button
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
+          onClick={handleSaveConfiguration}
+          disabled={!isDirty}
+        >
           Lưu cấu hình
         </Button>
       </div>
@@ -257,32 +247,28 @@ export function HomeModulesContent() {
           </DialogHeader>
           {editingModule && (
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="module-name">Tên module</Label>
-                <Input 
-                  id="module-name" 
-                  defaultValue={editingModule.name}
-                  className="border-border"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="module-desc">Mô tả</Label>
-                <Textarea 
-                  id="module-desc" 
-                  defaultValue={editingModule.description}
-                  className="border-border"
-                  rows={3}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="module-order">Thứ tự hiển thị</Label>
-                <Input 
-                  id="module-order" 
-                  type="number"
-                  defaultValue={editingModule.order}
-                  className="border-border w-24"
-                />
-              </div>
+              <FormFieldRHF
+                label="Tên module"
+                name="name"
+                required
+                placeholder="Nhập tên module"
+                control={editForm.control}
+              />
+              <FormFieldRHF
+                label="Mô tả"
+                name="description"
+                type="textarea"
+                placeholder="Nhập mô tả"
+                rows={3}
+                control={editForm.control}
+              />
+              <FormFieldRHF
+                label="Thứ tự hiển thị"
+                name="order"
+                type="number"
+                placeholder="VD: 1"
+                control={editForm.control}
+              />
             </div>
           )}
           <DialogFooter>
@@ -291,7 +277,8 @@ export function HomeModulesContent() {
             </Button>
             <Button 
               className="bg-primary text-primary-foreground"
-              onClick={() => setEditDialogOpen(false)}
+              onClick={editForm.handleSubmit(handleEditSubmit)}
+              disabled={!editForm.formState.isValid}
             >
               Lưu thay đổi
             </Button>

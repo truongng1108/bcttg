@@ -1,12 +1,49 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { FileText, Users, Music, FolderOpen, Eye, Edit3, Star } from "lucide-react"
 import { StatsCard } from "./stats-card"
 import { RecentActivity } from "./recent-activity"
 import { ContentChart, CategoryChart, AccessChart } from "./quick-stats"
-import { LotusDivider } from "../decorations/lotus-decoration"
+import { StatusItem } from "./components/status-item"
+import { PendingRow } from "./components/pending-row"
+import { DashboardService } from "@/lib/services/dashboard.service"
+import { formatNumber } from "@/lib/utils/formatters"
+import type {
+  DashboardPendingItem,
+  DashboardSummaryCard,
+  DashboardSystemStatusItem,
+} from "@/lib/data/types"
 
 export function DashboardContent() {
+  const [lastUpdatedAt, setLastUpdatedAt] = useState("")
+  const [summaryCards, setSummaryCards] = useState<DashboardSummaryCard[]>([])
+  const [systemStatusItems, setSystemStatusItems] = useState<DashboardSystemStatusItem[]>([])
+  const [pendingItems, setPendingItems] = useState<DashboardPendingItem[]>([])
+
+  useEffect(() => {
+    Promise.all([
+      DashboardService.getLastUpdatedAt(),
+      DashboardService.getSummaryCards(),
+      DashboardService.getSystemStatusItems(),
+      DashboardService.getPendingItems(),
+    ]).then(([updatedAt, summary, statusItems, pending]) => {
+      setLastUpdatedAt(updatedAt)
+      setSummaryCards(summary)
+      setSystemStatusItems(statusItems)
+      setPendingItems(pending)
+    })
+  }, [])
+
+  const summaryIconMap = {
+    posts: FileText,
+    profiles: FolderOpen,
+    songs: Music,
+    accounts: Users,
+    views: Eye,
+    edits: Edit3,
+  }
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -27,56 +64,27 @@ export function DashboardContent() {
         <div className="text-right">
           <p className="text-xs text-muted-foreground">Cập nhật lần cuối</p>
           <p className="text-sm font-semibold text-foreground">
-            27/01/2026 - 14:30
+            {lastUpdatedAt}
           </p>
         </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <StatsCard
-          title="Tổng bài viết"
-          value="156"
-          icon={FileText}
-          trend={{ value: 12, isPositive: true }}
-          description="so với tháng trước"
-          variant="primary"
-        />
-        <StatsCard
-          title="Hồ sơ dữ liệu"
-          value="89"
-          icon={FolderOpen}
-          trend={{ value: 8, isPositive: true }}
-          description="so với tháng trước"
-          variant="secondary"
-        />
-        <StatsCard
-          title="Ca khúc"
-          value="24"
-          icon={Music}
-          description="trong thư viện"
-          variant="accent"
-        />
-        <StatsCard
-          title="Tài khoản"
-          value="42"
-          icon={Users}
-          trend={{ value: 5, isPositive: true }}
-          description="đang hoạt động"
-        />
-        <StatsCard
-          title="Lượt xem hôm nay"
-          value="1,247"
-          icon={Eye}
-          trend={{ value: 23, isPositive: true }}
-          description="so với hôm qua"
-        />
-        <StatsCard
-          title="Chỉnh sửa hôm nay"
-          value="18"
-          icon={Edit3}
-          description="thao tác"
-        />
+        {summaryCards.map((card) => {
+          const Icon = summaryIconMap[card.iconKey]
+          return (
+            <StatsCard
+              key={card.id}
+              title={card.title}
+              value={formatNumber(card.value)}
+              icon={Icon}
+              trend={card.trend}
+              description={card.description}
+              variant={card.variant}
+            />
+          )
+        })}
       </div>
 
       {/* Charts Row */}
@@ -98,31 +106,14 @@ export function DashboardContent() {
             </h3>
           </div>
           <div className="divide-y divide-border">
-            <StatusItem
-              label="Cơ sở dữ liệu"
-              status="active"
-              detail="Hoạt động ổn định"
-            />
-            <StatusItem
-              label="Bộ nhớ đệm"
-              status="active"
-              detail="85% dung lượng"
-            />
-            <StatusItem
-              label="Sao lưu tự động"
-              status="active"
-              detail="Lần cuối: 27/01/2026 06:00"
-            />
-            <StatusItem
-              label="Bảo mật"
-              status="active"
-              detail="Đã bật xác thực 2 lớp"
-            />
-            <StatusItem
-              label="SSL/TLS"
-              status="active"
-              detail="Chứng chỉ còn 89 ngày"
-            />
+            {systemStatusItems.map((item) => (
+              <StatusItem
+                key={item.id}
+                label={item.label}
+                status={item.status}
+                detail={item.detail}
+              />
+            ))}
           </div>
         </div>
       </div>
@@ -156,27 +147,16 @@ export function DashboardContent() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              <PendingRow
-                title="Trận đánh Đường 9 - Nam Lào"
-                type="Truyền thống"
-                author="Thượng úy Lê Văn C"
-                date="26/01/2026"
-                status="pending"
-              />
-              <PendingRow
-                title="Hồ sơ Thiếu tướng Nguyễn Văn E"
-                type="Hồ sơ"
-                author="Đại úy Trần Văn F"
-                date="25/01/2026"
-                status="pending"
-              />
-              <PendingRow
-                title="Ca khúc kỷ niệm 60 năm"
-                type="Ca khúc"
-                author="Trung úy Phạm Văn G"
-                date="24/01/2026"
-                status="review"
-              />
+              {pendingItems.map((item) => (
+                <PendingRow
+                  key={item.id}
+                  title={item.title}
+                  type={item.type}
+                  author={item.author}
+                  date={item.date}
+                  status={item.status}
+                />
+              ))}
             </tbody>
           </table>
         </div>
@@ -185,65 +165,3 @@ export function DashboardContent() {
   )
 }
 
-function StatusItem({
-  label,
-  status,
-  detail,
-}: {
-  label: string
-  status: "active" | "warning" | "error"
-  detail: string
-}) {
-  const statusColors = {
-    active: "bg-[#2E7D32]",
-    warning: "bg-[#F57C00]",
-    error: "bg-destructive",
-  }
-
-  return (
-    <div className="flex items-center justify-between px-4 py-3">
-      <div className="flex items-center gap-3">
-        <div className={`h-2 w-2 rounded-full ${statusColors[status]}`} />
-        <span className="text-sm font-medium text-foreground">{label}</span>
-      </div>
-      <span className="text-sm text-muted-foreground">{detail}</span>
-    </div>
-  )
-}
-
-function PendingRow({
-  title,
-  type,
-  author,
-  date,
-  status,
-}: {
-  title: string
-  type: string
-  author: string
-  date: string
-  status: "pending" | "review"
-}) {
-  const statusLabels = {
-    pending: { label: "Chờ duyệt", className: "bg-[#F57C00]/10 text-[#F57C00]" },
-    review: { label: "Đang xem xét", className: "bg-info/10 text-info" },
-  }
-
-  const s = statusLabels[status]
-
-  return (
-    <tr className="transition-colors hover:bg-muted/30">
-      <td className="px-4 py-3 text-sm font-medium text-foreground">{title}</td>
-      <td className="px-4 py-3 text-sm text-muted-foreground">{type}</td>
-      <td className="px-4 py-3 text-sm text-muted-foreground">{author}</td>
-      <td className="px-4 py-3 text-sm text-muted-foreground">{date}</td>
-      <td className="px-4 py-3">
-        <span
-          className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${s.className}`}
-        >
-          {s.label}
-        </span>
-      </td>
-    </tr>
-  )
-}

@@ -15,7 +15,7 @@ import {
 interface FormFieldProps {
   label: string
   name: string
-  type?: "text" | "email" | "password" | "tel" | "textarea" | "select" | "file"
+  type?: "text" | "email" | "password" | "tel" | "number" | "textarea" | "select" | "file"
   placeholder?: string
   required?: boolean
   disabled?: boolean

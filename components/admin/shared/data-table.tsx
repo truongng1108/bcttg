@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import type React from "react"
 
 import { useState } from "react"
 import { cn } from "@/lib/utils"
@@ -26,28 +26,36 @@ import {
 } from "@/components/ui/select"
 
 export interface Column<T> {
-  key: keyof T | string
-  title: string
-  sortable?: boolean
-  width?: string
-  render?: (value: unknown, row: T) => React.ReactNode
+  readonly key: keyof T | string
+  readonly title: string
+  readonly sortable?: boolean
+  readonly width?: string
+  readonly render?: (value: DataTableValue, row: T) => React.ReactNode
 }
 
+type DataTablePrimitive = string | number | boolean | null | undefined
+type DataTableRecord = { [key: string]: DataTableValue }
+type DataTableValue = DataTablePrimitive | DataTableRecord | readonly DataTableValue[]
+type DataTableFilterValues = Record<string, string>
+
 export interface DataTableProps<T> {
-  columns: Column<T>[]
-  data: T[]
-  searchPlaceholder?: string
-  onSearch?: (value: string) => void
-  filters?: {
-    key: string
-    label: string
-    options: { value: string; label: string }[]
+  readonly columns: readonly Column<T>[]
+  readonly data: readonly T[]
+  readonly searchPlaceholder?: string
+  readonly onSearch?: (value: string) => void
+  readonly filters?: readonly {
+    readonly key: string
+    readonly label: string
+    readonly options: readonly { value: string; label: string }[]
   }[]
-  pageSize?: number
-  totalItems?: number
-  currentPage?: number
-  onPageChange?: (page: number) => void
-  onSort?: (key: string, direction: "asc" | "desc") => void
+  readonly filterValues?: DataTableFilterValues
+  readonly onFilterChange?: (key: string, value: string) => void
+  readonly onClearFilters?: () => void
+  readonly pageSize?: number
+  readonly totalItems?: number
+  readonly currentPage?: number
+  readonly onPageChange?: (page: number) => void
+  readonly onSort?: (key: string, direction: "asc" | "desc") => void
 }
 
 export function DataTable<T extends { id: string | number }>({
@@ -56,6 +64,9 @@ export function DataTable<T extends { id: string | number }>({
   searchPlaceholder = "Tìm kiếm...",
   onSearch,
   filters,
+  filterValues,
+  onFilterChange,
+  onClearFilters,
   pageSize = 10,
   totalItems,
   currentPage = 1,
@@ -66,11 +77,16 @@ export function DataTable<T extends { id: string | number }>({
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [showFilters, setShowFilters] = useState(false)
+  const [localFilterValues, setLocalFilterValues] = useState<DataTableFilterValues>({})
 
   const total = totalItems ?? data.length
   const totalPages = Math.ceil(total / pageSize)
   const startItem = (currentPage - 1) * pageSize + 1
   const endItem = Math.min(currentPage * pageSize, total)
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = startIndex + pageSize
+  const displayData = data.slice(startIndex, endIndex)
+  const effectiveFilterValues = filterValues ?? localFilterValues
 
   const handleSearch = (value: string) => {
     setSearchValue(value)
@@ -85,14 +101,52 @@ export function DataTable<T extends { id: string | number }>({
     onSort?.(key, newDirection)
   }
 
-  const getValue = (row: T, key: string): unknown => {
-    return key.split(".").reduce((obj: unknown, k) => {
-      if (obj && typeof obj === "object") {
-        return (obj as Record<string, unknown>)[k]
-      }
-      return undefined
-    }, row)
+  const formatCellValue = (value: DataTableValue): string => {
+    if (value === null || value === undefined) return ""
+    if (typeof value === "string") return value
+    if (typeof value === "number") return String(value)
+    if (typeof value === "boolean") return value ? "true" : "false"
+    return ""
   }
+
+  const getSortIcon = (key: string) => {
+    if (sortKey !== key) return <ArrowUpDown className="h-3 w-3 opacity-50" />
+    if (sortDirection === "asc") return <ArrowUp className="h-3 w-3" />
+    return <ArrowDown className="h-3 w-3" />
+  }
+
+  const getValue = (row: T, key: string): DataTableValue => {
+    const parts = key.split(".")
+    let current: DataTableValue = row as DataTableRecord
+
+    for (const part of parts) {
+      if (!current || typeof current !== "object" || Array.isArray(current)) {
+        return undefined
+      }
+      const record = current as DataTableRecord
+      current = record[part]
+    }
+
+    return current
+  }
+
+  const handleFilterValueChange = (key: string, value: string) => {
+    if (!filterValues) {
+      setLocalFilterValues((prev) => ({ ...prev, [key]: value }))
+    }
+    onFilterChange?.(key, value)
+  }
+
+  const handleClearAllFilters = () => {
+    if (!filterValues) {
+      setLocalFilterValues({})
+    }
+    onClearFilters?.()
+  }
+
+  const hasAnyFilterSelected = Object.values(effectiveFilterValues).some(
+    (value) => value !== "all"
+  )
 
   return (
     <div className="rounded-md border border-border bg-card shadow-sm">
@@ -131,7 +185,10 @@ export function DataTable<T extends { id: string | number }>({
               <span className="text-sm text-muted-foreground">
                 {filter.label}:
               </span>
-              <Select>
+              <Select
+                value={effectiveFilterValues[filter.key] ?? "all"}
+                onValueChange={(value) => handleFilterValueChange(filter.key, value)}
+              >
                 <SelectTrigger className="h-8 w-40">
                   <SelectValue placeholder="Tất cả" />
                 </SelectTrigger>
@@ -146,7 +203,13 @@ export function DataTable<T extends { id: string | number }>({
               </Select>
             </div>
           ))}
-          <Button variant="ghost" size="sm" className="text-primary">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-primary"
+            disabled={!hasAnyFilterSelected}
+            onClick={handleClearAllFilters}
+          >
             Xóa bộ lọc
           </Button>
         </div>
@@ -171,15 +234,7 @@ export function DataTable<T extends { id: string | number }>({
                       onClick={() => handleSort(String(column.key))}
                     >
                       {column.title}
-                      {sortKey === String(column.key) ? (
-                        sortDirection === "asc" ? (
-                          <ArrowUp className="h-3 w-3" />
-                        ) : (
-                          <ArrowDown className="h-3 w-3" />
-                        )
-                      ) : (
-                        <ArrowUpDown className="h-3 w-3 opacity-50" />
-                      )}
+                      {getSortIcon(String(column.key))}
                     </button>
                   ) : (
                     column.title
@@ -189,7 +244,7 @@ export function DataTable<T extends { id: string | number }>({
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {data.length === 0 ? (
+            {displayData.length === 0 ? (
               <tr>
                 <td
                   colSpan={columns.length}
@@ -199,7 +254,7 @@ export function DataTable<T extends { id: string | number }>({
                 </td>
               </tr>
             ) : (
-              data.map((row) => (
+              displayData.map((row) => (
                 <tr
                   key={row.id}
                   className="transition-colors hover:bg-muted/30"
@@ -211,7 +266,7 @@ export function DataTable<T extends { id: string | number }>({
                     >
                       {column.render
                         ? column.render(getValue(row, String(column.key)), row)
-                        : String(getValue(row, String(column.key)) ?? "")}
+                        : formatCellValue(getValue(row, String(column.key)))}
                     </td>
                   ))}
                 </tr>
