@@ -6,3 +6,10 @@ export const ROLE_LABELS = {
 
 export type RoleLabel = typeof ROLE_LABELS[keyof typeof ROLE_LABELS]
 
+// UserRole labels for admin panel
+export const USER_ROLE_LABELS: Record<"ADMIN" | "MANAGER" | "USER", string> = {
+  ADMIN: "Quản trị viên",
+  MANAGER: "Quản lý",
+  USER: "Người dùng",
+}
+

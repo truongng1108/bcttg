@@ -1,46 +1,80 @@
-import { notesData } from "@/lib/data/mock/notes"
-import type { Note } from "@/lib/data/types"
+import { ApiClient } from "@/lib/services/api-client"
+import type { PersonalNote, PaginationMeta, PinRequest, ArchiveRequest } from "@/lib/types/api"
 
-let notesStore: Note[] = [...notesData]
+export interface NoteListParams {
+  page?: number
+  page_size?: number
+  sort?: string
+  order?: "asc" | "desc"
+  q?: string
+  is_archived?: boolean
+}
 
 export class NotesService {
-  static async getAll(): Promise<Note[]> {
-    return notesStore
-  }
-
-  static async getById(id: number): Promise<Note | null> {
-    return notesStore.find((note) => note.id === id) || null
-  }
-
-  static async create(data: Omit<Note, "id">): Promise<Note> {
-    const maxId = notesStore.reduce((max, note) => Math.max(max, note.id), 0)
-    const newNote: Note = {
-      id: maxId + 1,
-      title: String(data.title),
-      content: String(data.content),
-      category: String(data.category),
-      starred: Boolean(data.starred),
-      createdAt: String(data.createdAt),
-      updatedAt: String(data.updatedAt),
+  static async getAll(
+    params?: NoteListParams
+  ): Promise<{ data: PersonalNote[]; meta: PaginationMeta | null }> {
+    const response = await ApiClient.get<PersonalNote[]>(
+      "/api/v1/notes",
+      params as Record<string, string | number | boolean | null | undefined>,
+      true
+    )
+    if (!response.success || !response.data) {
+      throw new Error(response.error?.message || "Failed to fetch notes")
     }
-    notesStore = [newNote, ...notesStore]
-    return newNote
+    return { data: response.data, meta: response.meta }
   }
 
-  static async update(id: number, data: Partial<Note>): Promise<Note> {
-    const index = notesStore.findIndex((note) => note.id === id)
-    if (index === -1) {
-      throw new Error(`Note with id ${id} not found`)
+  static async getById(id: number): Promise<PersonalNote> {
+    const response = await ApiClient.get<PersonalNote>(`/api/v1/notes/${id}`, undefined, true)
+    if (!response.success || !response.data) {
+      throw new Error(response.error?.message || "Failed to fetch note")
     }
-    const updated = { ...notesStore[index], ...data }
-    notesStore = notesStore.map((note) => (note.id === id ? updated : note))
-    return updated
+    return response.data
   }
 
-  static async delete(id: number): Promise<boolean> {
-    const exists = notesStore.some((note) => note.id === id)
-    if (!exists) return false
-    notesStore = notesStore.filter((note) => note.id !== id)
-    return true
+  static async create(data: Partial<PersonalNote>): Promise<PersonalNote> {
+    const response = await ApiClient.post<PersonalNote>("/api/v1/notes", data, true)
+    if (!response.success || !response.data) {
+      throw new Error(response.error?.message || "Failed to create note")
+    }
+    return response.data
+  }
+
+  static async update(id: number, data: Partial<PersonalNote>): Promise<PersonalNote> {
+    const response = await ApiClient.put<PersonalNote>(`/api/v1/notes/${id}`, data, true)
+    if (!response.success || !response.data) {
+      throw new Error(response.error?.message || "Failed to update note")
+    }
+    return response.data
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await ApiClient.delete(`/api/v1/notes/${id}`, true)
+    if (!response.success) {
+      throw new Error(response.error?.message || "Failed to delete note")
+    }
+  }
+
+  static async pin(id: number, value: boolean): Promise<PersonalNote> {
+    const request: PinRequest = { value }
+    const response = await ApiClient.patch<PersonalNote>(`/api/v1/notes/${id}/pin`, request, true)
+    if (!response.success || !response.data) {
+      throw new Error(response.error?.message || "Failed to pin/unpin note")
+    }
+    return response.data
+  }
+
+  static async archive(id: number, value: boolean): Promise<PersonalNote> {
+    const request: ArchiveRequest = { value }
+    const response = await ApiClient.patch<PersonalNote>(
+      `/api/v1/notes/${id}/archive`,
+      request,
+      true
+    )
+    if (!response.success || !response.data) {
+      throw new Error(response.error?.message || "Failed to archive/unarchive note")
+    }
+    return response.data
   }
 }

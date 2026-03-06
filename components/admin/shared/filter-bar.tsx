@@ -12,6 +12,17 @@ import {
 } from "@/components/ui/select"
 import type { FilterBarProps } from "@/lib/types/components"
 
+const getUniqueOptionsByValue = (
+  options: readonly { value: string; label: string }[]
+) => {
+  const seen = new Set<string>()
+  return options.filter((opt) => {
+    if (seen.has(opt.value)) return false
+    seen.add(opt.value)
+    return true
+  })
+}
+
 export function FilterBar({
   searchQuery,
   onSearchChange,
@@ -32,24 +43,31 @@ export function FilterBar({
             className="pl-10"
           />
         </div>
-        {filters.map((filter) => (
-          <Select
-            key={filter.key}
-            value={filterValues[filter.key] || filter.options[0]?.value || ""}
-            onValueChange={(value) => onFilterChange?.(filter.key, value)}
-          >
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder={filter.label} />
-            </SelectTrigger>
-            <SelectContent>
-              {filter.options.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ))}
+        {filters.map((filter) => {
+          const uniqueOptions = getUniqueOptionsByValue(filter.options)
+          const value = filterValues[filter.key] || uniqueOptions[0]?.value || ""
+          return (
+            <Select
+              key={filter.key}
+              value={value}
+              onValueChange={(v) => onFilterChange?.(filter.key, v)}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder={filter.label} />
+              </SelectTrigger>
+              <SelectContent>
+                {uniqueOptions.map((option, index) => (
+                  <SelectItem
+                    key={`${filter.key}-${option.value}-${index}`}
+                    value={option.value}
+                  >
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )
+        })}
       </CardContent>
     </Card>
   )

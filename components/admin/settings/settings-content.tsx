@@ -18,6 +18,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
@@ -529,9 +530,8 @@ export function SettingsContent() {
                     control={form.control}
                     name="smtpPass"
                     render={({ field }) => (
-                      <Input
+                      <PasswordInput
                         id="smtp-pass"
-                        type="password"
                         placeholder="••••••••"
                         value={field.value}
                         onChange={(e) => field.onChange(e.target.value)}

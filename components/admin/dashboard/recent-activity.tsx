@@ -7,7 +7,7 @@ import { FileText, User, Music, Settings, Shield } from "lucide-react"
 import type { ActivityItem } from "@/lib/data/types"
 import { DashboardService } from "@/lib/services/dashboard.service"
 
-const typeIcons = {
+const typeIcons: Record<string, typeof FileText> = {
   content: FileText,
   user: User,
   song: Music,
@@ -15,7 +15,7 @@ const typeIcons = {
   profile: Shield,
 }
 
-const typeColors = {
+const typeColors: Record<string, string> = {
   content: "bg-primary/10 text-primary",
   user: "bg-secondary/10 text-secondary",
   song: "bg-accent/10 text-accent",
@@ -27,7 +27,21 @@ export function RecentActivity() {
   const [activities, setActivities] = useState<ActivityItem[]>([])
 
   useEffect(() => {
-    DashboardService.getRecentActivities().then(setActivities)
+    DashboardService.getOverview()
+      .then((data) => {
+        const mappedActivities: ActivityItem[] = data.recentActivities.map((activity) => ({
+          id: activity.id,
+          action: activity.action,
+          target: activity.target,
+          user: activity.user,
+          timestamp: activity.timestamp,
+          type: activity.type as "content" | "user" | "song" | "system" | "profile",
+        }))
+        setActivities(mappedActivities)
+      })
+      .catch(() => {
+        setActivities([])
+      })
   }, [])
 
   return (
@@ -38,17 +52,18 @@ export function RecentActivity() {
         </h3>
       </div>
       <div className="divide-y divide-border">
-        {activities.map((activity) => {
-          const Icon = typeIcons[activity.type]
+        {activities.map((activity, index) => {
+          const Icon = typeIcons[activity.type] || FileText
+          const activityKey = `${String(activity.id)}-${activity.timestamp}-${index}`
           return (
             <div
-              key={activity.id}
+              key={activityKey}
               className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/30"
             >
               <div
                 className={cn(
                   "flex h-8 w-8 flex-shrink-0 items-center justify-center rounded",
-                  typeColors[activity.type]
+                  typeColors[activity.type] || typeColors.content
                 )}
               >
                 <Icon className="h-4 w-4" />

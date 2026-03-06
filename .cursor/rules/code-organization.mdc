@@ -1,0 +1,35 @@
+---
+alwaysApply: true
+---
+
+# Code Organization Rules
+
+## Constants
+- All constants MUST be defined in `lib/constants/` directory
+- Constants should be exported with UPPER_SNAKE_CASE names
+- Related constants should be grouped in the same file
+- NO inline constants in components
+
+## Types
+- All types/interfaces MUST be defined in `lib/types/` directory
+- Display types (for UI mapping) go in `lib/types/display.ts`
+- Component props types can stay in component files if only used once
+- Shared types MUST be in `lib/types/`
+- NO inline type definitions in components unless they are component-specific props
+
+## Utils
+- All utility functions MUST be in `lib/utils/` directory
+- Group related utilities in the same file (e.g., date utilities in `date.ts`)
+- NO inline utility functions in components
+- Reusable formatting, validation, and helper functions should be extracted
+
+## Components
+- Components should ONLY contain UI logic and state management
+- NO constants, types, or utils defined inside components
+- Use custom hooks for complex state management
+- Keep components focused on rendering and user interaction
+
+## File Structure
+- Follow the existing directory structure
+- Group related files together
+- Use descriptive file names

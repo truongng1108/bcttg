@@ -1,44 +1,108 @@
-import { mockAccounts } from "@/lib/data/mock/accounts"
-import type { Account } from "@/lib/data/types"
+import { ApiClient } from "@/lib/services/api-client"
+import type {
+  UserAccount,
+  PaginationMeta,
+  ActiveRequest,
+  RoleRequest,
+  ResetPasswordRequest,
+  UserCreateRequest,
+  UserUpdateRequest,
+} from "@/lib/types/api"
 
-let accountsStore: Account[] = [...mockAccounts]
+export interface UserListParams {
+  page?: number
+  page_size?: number
+  sort?: string
+  order?: "asc" | "desc"
+  q?: string
+  role?: "ADMIN" | "MANAGER" | "USER"
+  is_active?: boolean
+}
 
 export class AccountsService {
-  static async getAll(): Promise<Account[]> {
-    return accountsStore
-  }
-
-  static async getById(id: string): Promise<Account | null> {
-    return accountsStore.find((a) => a.id === id) || null
-  }
-
-  static async create(data: Omit<Account, "id">): Promise<Account> {
-    const maxId = accountsStore.reduce((max, a) => {
-      const n = Number.parseInt(a.id, 10)
-      return Number.isFinite(n) ? Math.max(max, n) : max
-    }, 0)
-    const newAccount: Account = {
-      ...data,
-      id: String(maxId + 1),
+  static async getAll(
+    params?: UserListParams
+  ): Promise<{ data: UserAccount[]; meta: PaginationMeta | null }> {
+    const response = await ApiClient.get<UserAccount[]>(
+      "/api/v1/admin/users",
+      params as Record<string, string | number | boolean | null | undefined>,
+      true
+    )
+    if (!response.success || !response.data) {
+      throw new Error(response.error?.message || "Failed to fetch users")
     }
-    accountsStore = [newAccount, ...accountsStore]
-    return newAccount
+    return { data: response.data, meta: response.meta }
   }
 
-  static async update(id: string, data: Partial<Account>): Promise<Account> {
-    const index = accountsStore.findIndex((a) => a.id === id)
-    if (index === -1) {
-      throw new Error(`Account with id ${id} not found`)
+  static async getById(id: number): Promise<UserAccount> {
+    const response = await ApiClient.get<UserAccount>(`/api/v1/admin/users/${id}`, undefined, true)
+    if (!response.success || !response.data) {
+      throw new Error(response.error?.message || "Failed to fetch user")
     }
-    const updated = { ...accountsStore[index], ...data }
-    accountsStore = accountsStore.map((a) => (a.id === id ? updated : a))
-    return updated
+    return response.data
   }
 
-  static async delete(id: string): Promise<boolean> {
-    const exists = accountsStore.some((a) => a.id === id)
-    if (!exists) return false
-    accountsStore = accountsStore.filter((a) => a.id !== id)
-    return true
+  static async create(data: UserCreateRequest): Promise<UserAccount> {
+    const response = await ApiClient.post<UserAccount>("/api/v1/admin/users", data, true)
+    if (!response.success || !response.data) {
+      throw new Error(response.error?.message || "Failed to create user")
+    }
+    return response.data
+  }
+
+  static async update(id: number, data: UserUpdateRequest): Promise<UserAccount> {
+    const response = await ApiClient.put<UserAccount>(`/api/v1/admin/users/${id}`, data, true)
+    if (!response.success || !response.data) {
+      throw new Error(response.error?.message || "Failed to update user")
+    }
+    return response.data
+  }
+
+  static async delete(id: number): Promise<void> {
+    const response = await ApiClient.delete(`/api/v1/admin/users/${id}`, true)
+    if (!response.success) {
+      throw new Error(response.error?.message || "Failed to delete user")
+    }
+  }
+
+  static async toggleActive(id: number, value: boolean): Promise<UserAccount> {
+    const request: ActiveRequest = { value }
+    const response = await ApiClient.patch<UserAccount>(
+      `/api/v1/admin/users/${id}/active`,
+      request,
+      true
+    )
+    if (!response.success || !response.data) {
+      throw new Error(response.error?.message || "Failed to toggle active status")
+    }
+    return response.data
+  }
+
+  static async changeRole(
+    id: number,
+    role: "ADMIN" | "MANAGER" | "USER"
+  ): Promise<UserAccount> {
+    const request: RoleRequest = { role }
+    const response = await ApiClient.patch<UserAccount>(
+      `/api/v1/admin/users/${id}/role`,
+      request,
+      true
+    )
+    if (!response.success || !response.data) {
+      throw new Error(response.error?.message || "Failed to change role")
+    }
+    return response.data
+  }
+
+  static async resetPassword(id: number, newPassword: string): Promise<void> {
+    const request: ResetPasswordRequest = { newPassword }
+    const response = await ApiClient.patch<void>(
+      `/api/v1/admin/users/${id}/reset-password`,
+      request,
+      true
+    )
+    if (!response.success) {
+      throw new Error(response.error?.message || "Failed to reset password")
+    }
   }
 }

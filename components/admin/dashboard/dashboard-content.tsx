@@ -14,25 +14,114 @@ import type {
   DashboardSummaryCard,
   DashboardSystemStatusItem,
 } from "@/lib/data/types"
+import { toast } from "sonner"
+import { AdminLoadingState } from "@/components/admin/shared/admin-loading-state"
 
 export function DashboardContent() {
+  const [isLoading, setIsLoading] = useState(true)
   const [lastUpdatedAt, setLastUpdatedAt] = useState("")
   const [summaryCards, setSummaryCards] = useState<DashboardSummaryCard[]>([])
   const [systemStatusItems, setSystemStatusItems] = useState<DashboardSystemStatusItem[]>([])
   const [pendingItems, setPendingItems] = useState<DashboardPendingItem[]>([])
-
   useEffect(() => {
-    Promise.all([
-      DashboardService.getLastUpdatedAt(),
-      DashboardService.getSummaryCards(),
-      DashboardService.getSystemStatusItems(),
-      DashboardService.getPendingItems(),
-    ]).then(([updatedAt, summary, statusItems, pending]) => {
-      setLastUpdatedAt(updatedAt)
-      setSummaryCards(summary)
-      setSystemStatusItems(statusItems)
-      setPendingItems(pending)
-    })
+    setIsLoading(true)
+    DashboardService.getOverview()
+      .then((data) => {
+        const now = new Date()
+        setLastUpdatedAt(
+          now.toLocaleString("vi-VN", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        )
+
+        const cards: DashboardSummaryCard[] = [
+          {
+            id: "posts",
+            title: "Tổng bài viết",
+            value: data.summary.totalPosts,
+            iconKey: "posts",
+            variant: "default",
+          },
+          {
+            id: "profiles",
+            title: "Tổng hồ sơ",
+            value: data.summary.totalProfiles,
+            iconKey: "profiles",
+            variant: "default",
+          },
+          {
+            id: "songs",
+            title: "Tổng ca khúc",
+            value: data.summary.totalSongs,
+            iconKey: "songs",
+            variant: "default",
+          },
+          {
+            id: "accounts",
+            title: "Tổng tài khoản",
+            value: data.summary.totalAccounts,
+            iconKey: "accounts",
+            variant: "default",
+          },
+          {
+            id: "views",
+            title: "Lượt xem hôm nay",
+            value: data.summary.viewsToday,
+            iconKey: "views",
+            variant: "primary",
+          },
+          {
+            id: "edits",
+            title: "Chỉnh sửa hôm nay",
+            value: data.summary.editsToday,
+            iconKey: "edits",
+            variant: "secondary",
+          },
+        ]
+        setSummaryCards(cards)
+
+        const statusItems: DashboardSystemStatusItem[] = data.systemStatuses.map((item) => {
+          let status: "active" | "warning" | "error" = "active"
+          if (item.status === "warning" || item.status === "error") {
+            status = item.status
+          } else if (item.status !== "active") {
+            status = "warning"
+          }
+          return {
+            id: item.id,
+            label: item.label,
+            status,
+            detail: item.detail,
+          }
+        })
+        setSystemStatusItems(statusItems)
+
+        const pending: DashboardPendingItem[] = data.pendingItems.map((item) => {
+          let status: "pending" | "review" = "pending"
+          if (item.status === "review") {
+            status = "review"
+          }
+          return {
+            id: item.id,
+            title: item.title,
+            type: item.type,
+            author: item.author,
+            date: item.date,
+            status,
+          }
+        })
+        setPendingItems(pending)
+      })
+      .catch(() => {
+        toast.error("Không tải được dữ liệu dashboard")
+      })
+      .finally(() => {
+        setIsLoading(false)
+      })
   }, [])
 
   const summaryIconMap = {
@@ -42,6 +131,10 @@ export function DashboardContent() {
     accounts: Users,
     views: Eye,
     edits: Edit3,
+  }
+
+  if (isLoading) {
+    return <AdminLoadingState />
   }
 
   return (
@@ -106,9 +199,9 @@ export function DashboardContent() {
             </h3>
           </div>
           <div className="divide-y divide-border">
-            {systemStatusItems.map((item) => (
+            {systemStatusItems.map((item, index) => (
               <StatusItem
-                key={item.id}
+                key={`status-item-${String(item.id || index)}-${index}`}
                 label={item.label}
                 status={item.status}
                 detail={item.detail}
@@ -147,9 +240,9 @@ export function DashboardContent() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {pendingItems.map((item) => (
+              {pendingItems.map((item, index) => (
                 <PendingRow
-                  key={item.id}
+                  key={`pending-item-${String(item.id || index)}-${index}`}
                   title={item.title}
                   type={item.type}
                   author={item.author}

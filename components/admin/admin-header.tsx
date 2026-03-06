@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { Menu, LogOut, Bell, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -9,12 +10,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useAuth } from "@/lib/contexts/auth-context"
 
 interface AdminHeaderProps {
   readonly onToggleSidebar: () => void
 }
 
 export function AdminHeader({ onToggleSidebar }: AdminHeaderProps) {
+  const { logout } = useAuth()
+  const router = useRouter()
+
+  const handleLogout = () => {
+    logout()
+    router.push("/dang-nhap")
+  }
   return (
     <header className="relative flex h-16 items-center justify-between border-b border-border bg-card px-4 shadow-sm">
       {/* Đường viền accent trên cùng */}
@@ -88,7 +97,10 @@ export function AdminHeader({ onToggleSidebar }: AdminHeaderProps) {
               Thông tin cá nhân
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              className="cursor-pointer text-destructive focus:text-destructive"
+              onClick={handleLogout}
+            >
               <LogOut className="mr-2 h-4 w-4" />
               Đăng xuất
             </DropdownMenuItem>

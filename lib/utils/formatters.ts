@@ -18,3 +18,10 @@ export function mapSongCategoryLabel(value: string): string {
   if (value === "tru-tinh") return "Trữ tình"
   return value || "Chưa phân loại"
 }
+
+export function formatDuration(seconds: number | null | undefined): string {
+  if (!seconds) return "—"
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  return `${mins}:${secs.toString().padStart(2, "0")}`
+}

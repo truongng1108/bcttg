@@ -194,8 +194,10 @@ export function DataTable<T extends { id: string | number }>({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả</SelectItem>
-                  {filter.options.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
+                  {filter.options
+                    .filter((option) => option.value !== "all")
+                    .map((option, index) => (
+                    <SelectItem key={`${option.value}-${index}`} value={option.value}>
                       {option.label}
                     </SelectItem>
                   ))}

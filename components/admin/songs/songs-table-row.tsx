@@ -1,6 +1,6 @@
 "use client"
 
-import { Play, Pause, Trash2, FileAudio, Clock } from "lucide-react"
+import { Play, Pause, Trash2, FileAudio, Clock, Edit, Eye, EyeOff, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { TableCell, TableRow } from "@/components/ui/table"
@@ -12,6 +12,9 @@ export interface SongTableRowProps {
   readonly index: number
   readonly playingId: number | null
   readonly onTogglePlay: (id: number) => void
+  readonly onEdit?: (song: Song) => void
+  readonly onView?: (song: Song) => void
+  readonly onToggleVisibility?: (song: Song) => void
   readonly onDelete: (song: Song) => void
 }
 
@@ -20,6 +23,9 @@ export function SongTableRow({
   index,
   playingId,
   onTogglePlay,
+  onEdit,
+  onView,
+  onToggleVisibility,
   onDelete,
 }: SongTableRowProps) {
   return (
@@ -89,10 +95,48 @@ export function SongTableRow({
       </TableCell>
       <TableCell>
         <div className="flex items-center justify-center gap-1">
+          {onView && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-blue-600"
+              title="Xem chi tiết"
+              onClick={() => onView(song)}
+            >
+              <FileText className="h-4 w-4" />
+            </Button>
+          )}
+          {onEdit && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-primary"
+              title="Sửa"
+              onClick={() => onEdit(song)}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+          )}
+          {onToggleVisibility && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-[#F57C00]"
+              title={song.status === "hidden" ? "Hiện" : "Ẩn"}
+              onClick={() => onToggleVisibility(song)}
+            >
+              {song.status === "hidden" ? (
+                <Eye className="h-4 w-4" />
+              ) : (
+                <EyeOff className="h-4 w-4" />
+              )}
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
             className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+            title="Xóa"
             onClick={() => onDelete(song)}
           >
             <Trash2 className="h-4 w-4" />

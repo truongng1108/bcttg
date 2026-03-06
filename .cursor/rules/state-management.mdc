@@ -1,0 +1,31 @@
+---
+alwaysApply: true
+---
+
+# State Management Rules
+
+## React Hook Form
+- Use React Hook Form for ALL form state management
+- NO useState for form fields
+- Use zodResolver with Zod schemas for validation
+- Form schemas should be in `lib/schemas/`
+
+## Custom Hooks
+- Use custom hooks for reusable state patterns:
+  - `useDialogState` for dialog open/close and selected item
+  - `useTableState` for table pagination, filters, and search
+  - `useFormDialogs` for form dialog states (create/edit/delete)
+- Group related useState calls into custom hooks when they appear together frequently
+
+## State Organization
+- Group related state into objects when they are always used together
+- Avoid having 20+ individual useState calls in a single component
+- Use custom hooks to encapsulate complex state logic
+
+## Dialog State
+- Use `useDialogState` hook instead of separate `open` and `selectedId` states
+- Use `useFormDialogs` for form-related dialogs (create/edit/delete)
+
+## Table State
+- Use `useTableState` hook for table-related state (search, filters, pagination)
+- Avoid duplicating table state management across components

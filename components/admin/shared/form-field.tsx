@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
@@ -78,8 +79,8 @@ export function FormField({
               <SelectValue placeholder={placeholder || "Chọn..."} />
             </SelectTrigger>
             <SelectContent>
-              {options?.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
+              {options?.map((option, index) => (
+                <SelectItem key={`${option.value}-${index}`} value={option.value}>
                   {option.label}
                 </SelectItem>
               ))}
@@ -107,6 +108,20 @@ export function FormField({
         )
 
       default:
+        if (type === "password") {
+          return (
+            <PasswordInput
+              id={inputId}
+              name={name}
+              placeholder={placeholder}
+              required={required}
+              disabled={disabled}
+              value={value}
+              onChange={(e) => onChange?.(e.target.value)}
+              className={cn(error && "border-destructive")}
+            />
+          )
+        }
         return (
           <Input
             id={inputId}

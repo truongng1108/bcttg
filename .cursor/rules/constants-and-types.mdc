@@ -1,0 +1,33 @@
+---
+alwaysApply: true
+---
+
+# Constants and Types Rules
+
+## Constants
+- All constants MUST be in `lib/constants/` directory
+- Use UPPER_SNAKE_CASE for constant names
+- Group related constants in the same file:
+  - Profile types: `lib/constants/profile-types.ts`
+  - Content types: `lib/constants/content-types.ts`
+  - Status options: `lib/constants/status-options.ts`
+  - Filter options: `lib/constants/filter-options.ts`
+  - Roles: `lib/constants/roles.ts`
+
+## Types
+- All shared types MUST be in `lib/types/` directory
+- Display types go in `lib/types/display.ts`
+- API types go in `lib/types/api.ts`
+- Component types go in `lib/types/components.ts`
+- Component-specific props can stay in component files if only used once
+
+## Labels and Options
+- Labels (e.g., `PROFILE_TYPE_LABELS`, `ROLE_LABELS`) should be constants
+- Select options (e.g., `STATUS_FILTER_OPTIONS`) should be constants
+- NO inline label objects or option arrays in components
+
+## Import Rules
+- Always import constants from `lib/constants/`
+- Always import types from `lib/types/`
+- Always import utils from `lib/utils/`
+- Use absolute imports with `@/` prefix

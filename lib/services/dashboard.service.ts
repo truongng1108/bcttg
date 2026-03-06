@@ -1,35 +1,16 @@
-import {
-  dashboardLastUpdatedAt,
-  dashboardPendingItems,
-  dashboardSummaryCards,
-  dashboardSystemStatusItems,
-  mockActivities,
-} from "@/lib/data/mock/dashboard"
-import type {
-  ActivityItem,
-  DashboardPendingItem,
-  DashboardSummaryCard,
-  DashboardSystemStatusItem,
-} from "@/lib/data/types"
+import { ApiClient } from "@/lib/services/api-client"
+import type { DashboardOverview } from "@/lib/types/api"
 
 export class DashboardService {
-  static async getRecentActivities(): Promise<ActivityItem[]> {
-    return mockActivities
-  }
-
-  static async getLastUpdatedAt(): Promise<string> {
-    return dashboardLastUpdatedAt
-  }
-
-  static async getSummaryCards(): Promise<DashboardSummaryCard[]> {
-    return dashboardSummaryCards
-  }
-
-  static async getSystemStatusItems(): Promise<DashboardSystemStatusItem[]> {
-    return dashboardSystemStatusItems
-  }
-
-  static async getPendingItems(): Promise<DashboardPendingItem[]> {
-    return dashboardPendingItems
+  static async getOverview(): Promise<DashboardOverview> {
+    const response = await ApiClient.get<DashboardOverview>(
+      "/api/v1/admin/dashboard/overview",
+      undefined,
+      true
+    )
+    if (!response.success || !response.data) {
+      throw new Error(response.error?.message || "Failed to fetch dashboard overview")
+    }
+    return response.data
   }
 }

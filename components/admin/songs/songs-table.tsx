@@ -16,6 +16,9 @@ export interface SongsTableProps {
   startIndex: number
   playingId: number | null
   onTogglePlay: (id: number) => void
+  onEdit?: (song: Song) => void
+  onView?: (song: Song) => void
+  onToggleVisibility?: (song: Song) => void
   onDelete: (song: Song) => void
 }
 
@@ -24,8 +27,11 @@ export function SongsTable({
   startIndex,
   playingId,
   onTogglePlay,
+  onEdit,
+  onView,
+  onToggleVisibility,
   onDelete,
-}: SongsTableProps) {
+}: Readonly<SongsTableProps>) {
   return (
     <Card className="border-border">
       <Table>
@@ -51,6 +57,9 @@ export function SongsTable({
               index={startIndex + index}
               playingId={playingId}
               onTogglePlay={onTogglePlay}
+              onEdit={onEdit}
+              onView={onView}
+              onToggleVisibility={onToggleVisibility}
               onDelete={onDelete}
             />
           ))}

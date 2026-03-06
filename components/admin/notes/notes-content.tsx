@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { 
   StickyNote, 
   Plus, 
@@ -9,6 +10,9 @@ import {
   Edit,
   Trash2,
   Clock,
+  Archive,
+  Inbox,
+  FileText,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -30,45 +34,75 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { NoteCreateFormSchema, type NoteCreateFormData, type NoteUpdateFormData } from "@/lib/schemas/note.schema"
 
-import type { Note, SelectOption } from "@/lib/data/types"
+import type { SelectOption } from "@/lib/data/types"
+import type { PersonalNote, PaginationMeta } from "@/lib/types/api"
 import { NotesService } from "@/lib/services/notes.service"
-import { categoryColors } from "@/lib/data/mock/notes"
-import { OptionsService } from "@/lib/services/options.service"
 import { toast } from "sonner"
 import { AdminLoadingState } from "@/components/admin/shared/admin-loading-state"
 import { AdminSection } from "@/components/admin/shared/admin-section"
+import { PINNED_FILTER_OPTIONS, ARCHIVE_FILTER_OPTIONS } from "@/lib/constants/filter-options"
+import type { NoteDisplay } from "@/lib/types/display"
 
 export function NotesContent() {
-  const [notes, setNotes] = useState<Note[]>([])
-  const [categoryOptions, setCategoryOptions] = useState<SelectOption[]>([])
-  const [starredOptions, setStarredOptions] = useState<SelectOption[]>([])
+  const router = useRouter()
+  const [notes, setNotes] = useState<NoteDisplay[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(20)
+  const [totalPages, setTotalPages] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
   const [isMutating, setIsMutating] = useState(false)
-
-  useEffect(() => {
-    setIsLoading(true)
-    NotesService.getAll()
-      .then(setNotes)
-      .catch(() => toast.error("Không tải được danh sách ghi chú"))
-      .finally(() => setIsLoading(false))
-  }, [])
-
-  useEffect(() => {
-    Promise.all([
-      OptionsService.getNoteCategories(),
-      OptionsService.getStarredFilters(),
-    ]).then(([categories, starred]) => {
-      setCategoryOptions(categories)
-      setStarredOptions(starred)
-    })
-  }, [])
+  const [categoryOptions] = useState<SelectOption[]>([])
+  // Options imported from constants
   const [searchQuery, setSearchQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [starredFilter, setStarredFilter] = useState("all")
+  const [archiveFilter, setArchiveFilter] = useState("not-archived")
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [selectedNote, setSelectedNote] = useState<Note | null>(null)
+  const [selectedNote, setSelectedNote] = useState<NoteDisplay | null>(null)
+  const [noteDetailOpen, setNoteDetailOpen] = useState(false)
+  const [selectedNoteId, setSelectedNoteId] = useState<number | null>(null)
+
+  const loadNotes = async () => {
+    setIsLoading(true)
+    try {
+      const params: Record<string, string | number | boolean | null | undefined> = {
+        page: currentPage,
+        page_size: pageSize,
+      }
+      if (searchQuery) {
+        params.q = searchQuery
+      }
+      if (archiveFilter !== "all") {
+        params.is_archived = archiveFilter === "archived"
+      }
+      const response = await NotesService.getAll(params)
+      const mapped: NoteDisplay[] = response.data.map((note) => ({
+        id: note.id,
+        title: note.title,
+        content: note.content,
+        category: "",
+        starred: note.isPinned,
+        createdAt: note.createdAt,
+        updatedAt: note.updatedAt,
+        isPinned: note.isPinned,
+        isArchived: note.isArchived,
+      }))
+      setNotes(mapped)
+      if (response.meta) {
+        setTotalPages(response.meta.total_pages)
+      }
+    } catch {
+      toast.error("Không tải được danh sách ghi chú")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadNotes()
+  }, [currentPage, searchQuery, starredFilter, archiveFilter])
 
   const emptyFormValues: NoteCreateFormData = {
     title: "",
@@ -101,36 +135,52 @@ export function NotesContent() {
     result = filterBySearch(result, searchQuery, ["title", "content"])
     result = filterByCategory(result, categoryFilter, "category")
     result = filterByStarred(result, starredFilter)
+    if (archiveFilter === "archived") {
+      result = result.filter((n) => n.isArchived)
+    } else if (archiveFilter === "not-archived") {
+      result = result.filter((n) => !n.isArchived)
+    }
     return result
-  }, [notes, searchQuery, categoryFilter, starredFilter])
+  }, [notes, searchQuery, categoryFilter, starredFilter, archiveFilter])
 
   const refreshNotes = async () => {
-    const next = await NotesService.getAll()
-    setNotes(next)
+    await loadNotes()
   }
 
   const toggleStar = async (id: number) => {
     if (isMutating) return
     setIsMutating(true)
-    const existing = await NotesService.getById(id)
-    if (!existing) {
-      setIsMutating(false)
-      return
-    }
     try {
-      await NotesService.update(id, { starred: !existing.starred, updatedAt: new Date().toLocaleString("vi-VN") })
+      const existing = await NotesService.getById(id)
+      await NotesService.pin(id, !existing.isPinned)
       await refreshNotes()
+    } catch {
+      toast.error("Cập nhật ghim thất bại")
     } finally {
       setIsMutating(false)
     }
   }
 
-  const handleEdit = (note: Note) => {
+  const toggleArchive = async (note: NoteDisplay) => {
+    if (isMutating) return
+    setIsMutating(true)
+    try {
+      await NotesService.archive(note.id, !note.isArchived)
+      await refreshNotes()
+      toast.success(note.isArchived ? "Đã bỏ lưu trữ" : "Đã lưu trữ ghi chú")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Cập nhật lưu trữ thất bại")
+    } finally {
+      setIsMutating(false)
+    }
+  }
+
+  const handleEdit = (note: NoteDisplay) => {
     setSelectedNote(note)
     setEditDialogOpen(true)
   }
 
-  const handleDelete = (note: Note) => {
+  const handleDelete = (note: NoteDisplay) => {
     setSelectedNote(note)
     setDeleteDialogOpen(true)
   }
@@ -140,13 +190,9 @@ export function NotesContent() {
     if (isMutating) return
     setIsMutating(true)
     try {
-      const ok = await NotesService.delete(selectedNote.id)
-      if (ok) {
-        await refreshNotes()
-        toast.success("Đã xóa ghi chú")
-      } else {
-        toast.error("Không tìm thấy ghi chú để xóa")
-      }
+      await NotesService.delete(selectedNote.id)
+      await refreshNotes()
+      toast.success("Đã xóa ghi chú")
     } catch {
       toast.error("Xóa ghi chú thất bại")
     } finally {
@@ -181,15 +227,13 @@ export function NotesContent() {
     if (isMutating) return
     setIsMutating(true)
     const parsed = NoteCreateFormSchema.parse(values)
-    const now = new Date().toLocaleString("vi-VN")
     try {
       await NotesService.create({
         title: parsed.title,
-        category: parsed.category,
         content: parsed.content,
-        starred: false,
-        createdAt: now,
-        updatedAt: now,
+        colorCode: null,
+        reminderAt: null,
+        isPinned: false,
       })
       await refreshNotes()
       toast.success("Đã thêm ghi chú")
@@ -206,13 +250,10 @@ export function NotesContent() {
     if (isMutating) return
     setIsMutating(true)
     const parsed = NoteCreateFormSchema.parse(values)
-    const now = new Date().toLocaleString("vi-VN")
     try {
       await NotesService.update(selectedNote.id, {
         title: parsed.title,
-        category: parsed.category,
         content: parsed.content,
-        updatedAt: now,
       })
       await refreshNotes()
       toast.success("Đã lưu ghi chú")
@@ -235,13 +276,19 @@ export function NotesContent() {
     {
       key: "starred",
       label: "Lọc",
-      options: starredOptions,
+      options: PINNED_FILTER_OPTIONS,
+    },
+    {
+      key: "archive",
+      label: "Lưu trữ",
+      options: ARCHIVE_FILTER_OPTIONS,
     },
   ]
 
   const handleFilterChange = (key: string, value: string) => {
     if (key === "category") setCategoryFilter(value)
     if (key === "starred") setStarredFilter(value)
+    if (key === "archive") setArchiveFilter(value)
   }
 
   return (
@@ -275,7 +322,7 @@ export function NotesContent() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         filters={filterConfigs}
-        filterValues={{ category: categoryFilter, starred: starredFilter }}
+        filterValues={{ category: categoryFilter, starred: starredFilter, archive: archiveFilter }}
         onFilterChange={handleFilterChange}
         searchPlaceholder="Tìm kiếm ghi chú..."
       />
@@ -293,7 +340,7 @@ export function NotesContent() {
                 <div className="flex-1">
                   <Badge
                     variant="outline"
-                    className={`mb-2 text-xs ${categoryColors[note.category] || ""}`}
+                    className="mb-2 text-xs"
                   >
                     {note.category}
                   </Badge>
@@ -325,6 +372,30 @@ export function NotesContent() {
                   {note.updatedAt}
                 </div>
                 <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 hover:bg-blue-600/10 hover:text-blue-600"
+                    onClick={() => {
+                      router.push(`/ghi-chu/${note.id}/detail`)
+                    }}
+                    title="Xem chi tiết"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 hover:bg-primary/10 hover:text-primary"
+                    onClick={() => toggleArchive(note)}
+                    title={note.isArchived ? "Bỏ lưu trữ" : "Lưu trữ"}
+                  >
+                    {note.isArchived ? (
+                      <Inbox className="h-3.5 w-3.5" />
+                    ) : (
+                      <Archive className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -466,6 +537,7 @@ export function NotesContent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
 
       <ConfirmDialog
         open={deleteDialogOpen}

@@ -21,6 +21,7 @@ export interface SongsAddDialogProps {
   readonly categoryOptions: readonly SelectOption[]
   readonly onSubmit: () => void
   readonly isValid: boolean
+  readonly mode?: "create" | "edit"
 }
 
 export function SongsAddDialog({
@@ -30,14 +31,19 @@ export function SongsAddDialog({
   categoryOptions,
   onSubmit,
   isValid,
+  mode = "create",
 }: SongsAddDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-primary">Thêm Ca Khúc Mới</DialogTitle>
+          <DialogTitle className="text-primary">
+            {mode === "create" ? "Thêm Ca Khúc Mới" : "Sửa Ca Khúc"}
+          </DialogTitle>
           <DialogDescription>
-            Nhập thông tin ca khúc truyền thống mới
+            {mode === "create"
+              ? "Nhập thông tin ca khúc truyền thống mới"
+              : "Cập nhật thông tin ca khúc"}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -98,7 +104,7 @@ export function SongsAddDialog({
             onClick={onSubmit}
             disabled={!isValid}
           >
-            Thêm ca khúc
+            {mode === "create" ? "Thêm ca khúc" : "Lưu thay đổi"}
           </Button>
         </DialogFooter>
       </DialogContent>

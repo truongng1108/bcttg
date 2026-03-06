@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import {
@@ -17,13 +18,16 @@ import {
   type Control,
   type FieldPath,
   type FieldValues,
+  useFormState,
 } from "react-hook-form"
+import { z } from "zod"
 
 type FieldType =
   | "text"
   | "email"
   | "password"
   | "tel"
+  | "date"
   | "number"
   | "textarea"
   | "select"
@@ -45,13 +49,73 @@ interface FormFieldRHFProps<T extends FieldValues> {
   readonly className?: string
 }
 
+// Helper function to check if a field is required in Zod schema
+function isFieldRequired<T extends FieldValues>(
+  control: Control<T>,
+  fieldName: string
+): boolean {
+  try {
+    // Access the resolver from control's internal options
+    const controlInternal = control as any
+    const resolver = controlInternal._options?.resolver
+    
+    if (!resolver) return false
+
+    // Try to get schema from zodResolver
+    // zodResolver stores schema in _def.schema
+    const resolverDef = resolver._def
+    if (!resolverDef) return false
+
+    const schema = resolverDef.schema
+    if (!schema || !(schema instanceof z.ZodObject)) return false
+
+    const shape = schema.shape
+    if (!shape || typeof shape !== "object") return false
+
+    const fieldSchema = shape[fieldName]
+    if (!fieldSchema) return false
+
+    // Check if field is optional or nullable
+    let currentSchema: z.ZodTypeAny = fieldSchema
+
+    // Unwrap optional/nullable/default wrappers
+    while (currentSchema) {
+      // If it's optional, the field is not required
+      if (currentSchema instanceof z.ZodOptional) {
+        return false
+      }
+      
+      // If it's nullable (but not optional), continue unwrapping
+      if (currentSchema instanceof z.ZodNullable) {
+        currentSchema = currentSchema._def.innerType
+        continue
+      }
+      
+      // If it's default, continue unwrapping
+      if (currentSchema instanceof z.ZodDefault) {
+        currentSchema = currentSchema._def.innerType
+        continue
+      }
+      
+      // If we get here, it's a base type and required
+      break
+    }
+
+    // If we successfully unwrapped and didn't find optional, it's required
+    return true
+  } catch {
+    // If anything fails, default to false (not required)
+    return false
+  }
+}
+
 export function FormFieldRHF<T extends FieldValues>({
   control,
   name,
   label,
   type = "text",
   placeholder,
-  required = false,
+  required: requiredProp,
   disabled = false,
   helpText,
   options,
@@ -60,6 +124,11 @@ export function FormFieldRHF<T extends FieldValues>({
   className,
 }: FormFieldRHFProps<T>) {
   const inputId = `field-${String(name)}`
+  
+  // Auto-detect required from schema if not explicitly provided
+  const fieldName = String(name)
+  const isRequiredFromSchema = isFieldRequired(control, fieldName)
+  const required = requiredProp !== undefined ? requiredProp : isRequiredFromSchema
 
   if (type === "file") {
     return (
@@ -143,6 +212,19 @@ export function FormFieldRHF<T extends FieldValues>({
         const stringValue = typeof field.value === "string" ? field.value : ""
 
         let fieldNode = (
+          type === "password" ? (
+            <PasswordInput
+              id={inputId}
+              name={String(name)}
+              placeholder={placeholder}
+              required={required}
+              disabled={disabled}
+              value={stringValue}
+              onChange={(e) => field.onChange(e.target.value)}
+              onBlur={field.onBlur}
+              className={cn(errorMessage && "border-destructive")}
+            />
+          ) : (
             <Input
               id={inputId}
               name={String(name)}
@@ -156,6 +238,7 @@ export function FormFieldRHF<T extends FieldValues>({
               className={cn(errorMessage && "border-destructive")}
             />
           )
+        )
 
         if (type === "textarea") {
           fieldNode = (
@@ -185,8 +268,8 @@ export function FormFieldRHF<T extends FieldValues>({
                 <SelectValue placeholder={placeholder || "Chọn..."} />
               </SelectTrigger>
               <SelectContent>
-                {options?.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
+                {options?.map((option, index) => (
+                  <SelectItem key={`${option.value}-${index}`} value={option.value}>
                     {option.label}
                   </SelectItem>
                 ))}
