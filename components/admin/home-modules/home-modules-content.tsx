@@ -36,10 +36,14 @@ export function HomeModulesContent() {
   })
 
   useEffect(() => {
-    HomeModulesService.getAll().then((data) => {
-      setModules(data)
-      setBaselineModules(data)
-    })
+    HomeModulesService.getAll()
+      .then((data) => {
+        setModules(data)
+        setBaselineModules(data)
+      })
+      .catch((err) => {
+        toast.error(err instanceof Error ? err.message : "Không tải được module trang chủ")
+      })
   }, [])
 
   const toggleModule = (id: string) => {
@@ -154,10 +158,14 @@ export function HomeModulesContent() {
       return
     }
     const ordered = [...modules].sort((a, b) => a.order - b.order)
-    const saved = await HomeModulesService.saveAll(ordered)
-    setModules(saved)
-    setBaselineModules(saved)
-    toast.success("Đã lưu cấu hình module trang chủ")
+    try {
+      const saved = await HomeModulesService.saveAll(ordered)
+      setModules(saved)
+      setBaselineModules(saved)
+      toast.success("Đã lưu cấu hình module trang chủ")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Lưu cấu hình thất bại")
+    }
   }
 
   return (

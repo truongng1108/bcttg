@@ -21,7 +21,7 @@ export class SongCategoriesService {
     const response = await ApiClient.get<SongCategory[]>(
       "/api/v1/public/song-categories",
       params as Record<string, string | number | boolean | null | undefined>,
-      false
+      true
     )
     if (!response.success || !response.data) {
       throw new Error(response.error?.message || "Failed to fetch song categories")
@@ -33,7 +33,7 @@ export class SongCategoriesService {
     const response = await ApiClient.get<SongCategory>(
       `/api/v1/public/song-categories/${id}`,
       undefined,
-      false
+      true
     )
     if (!response.success || !response.data) {
       throw new Error(response.error?.message || "Failed to fetch song category")
@@ -80,7 +80,7 @@ export class SongCategoriesService {
   }
 
   static async update(id: number, data: Partial<SongCategory>): Promise<SongCategory> {
-    const response = await ApiClient.put<SongCategory>(
+    const response = await ApiClient.patch<SongCategory>(
       `/api/v1/admin/song-categories/${id}`,
       data,
       true

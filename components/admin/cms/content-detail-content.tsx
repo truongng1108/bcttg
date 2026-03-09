@@ -35,7 +35,6 @@ export function ContentDetailContent({ contentId }: ContentDetailContentProps) {
       const item = await ContentItemsService.getByIdAdmin(contentId)
       setContentItem(item)
 
-      // Use coverMedia from response if available, otherwise load separately
       if (item.coverMedia) {
         setCoverMedia(item.coverMedia)
       } else if (item.coverMediaId) {
@@ -43,16 +42,13 @@ export function ContentDetailContent({ contentId }: ContentDetailContentProps) {
           const media = await MediaService.getById(item.coverMediaId)
           setCoverMedia(media)
         } catch {
-          // Media might not exist
         }
       }
 
-      // Load category
       try {
         const cat = await ContentCategoriesService.getByIdAdmin(item.categoryId)
         setCategory(cat)
       } catch {
-        // Category might not exist
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Không tải được thông tin bài viết")
@@ -71,7 +67,6 @@ export function ContentDetailContent({ contentId }: ContentDetailContentProps) {
 
   return (
     <div className="space-y-6">
-      {/* Thông tin cơ bản */}
       <DetailSection title="Thông tin cơ bản">
         <DetailRow label="Tiêu đề" value={contentItem.title} />
         <DetailRow label="Danh mục" value={category?.name || "—"} />
@@ -84,7 +79,6 @@ export function ContentDetailContent({ contentId }: ContentDetailContentProps) {
         <DetailRow label="Lượt xem" value={contentItem.viewCount} />
       </DetailSection>
 
-      {/* Ảnh bìa */}
       {coverMedia && (
         <DetailSection title="Ảnh bìa">
           <div className="py-3 space-y-3">
@@ -111,7 +105,6 @@ export function ContentDetailContent({ contentId }: ContentDetailContentProps) {
         </DetailSection>
       )}
 
-      {/* Nội dung */}
       {contentItem.bodyHtml && (
         <DetailSection title="Nội dung">
           <div
@@ -121,7 +114,6 @@ export function ContentDetailContent({ contentId }: ContentDetailContentProps) {
         </DetailSection>
       )}
 
-      {/* Thông tin thời gian */}
       <DetailSection title="Thông tin thời gian">
         <DetailRow
           label="Ngày xuất bản"
@@ -131,7 +123,6 @@ export function ContentDetailContent({ contentId }: ContentDetailContentProps) {
         <DetailRow label="Ngày cập nhật" value={formatDateDetail(contentItem.updatedAt)} />
       </DetailSection>
 
-      {/* Thông tin kỹ thuật */}
       <DetailSection title="Thông tin kỹ thuật">
         <DetailRow label="ID" value={contentItem.id} copyable />
         <DetailRow label="Category ID" value={contentItem.categoryId} copyable />

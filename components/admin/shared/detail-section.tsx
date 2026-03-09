@@ -4,9 +4,9 @@ import { ReactNode } from "react"
 import { cn } from "@/lib/utils"
 
 interface DetailSectionProps {
-  title: string
-  children: ReactNode
-  className?: string
+  readonly title: string
+  readonly children: ReactNode
+  readonly className?: string
 }
 
 export function DetailSection({ title, children, className }: DetailSectionProps) {

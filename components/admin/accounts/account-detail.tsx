@@ -16,12 +16,11 @@ import type { UserAccount } from "@/lib/types/api"
 import { toast } from "sonner"
 import { formatDateDetail } from "@/lib/utils/date"
 import { RoleBadge } from "@/components/admin/shared/role-badge"
-import { USER_ROLE_LABELS } from "@/lib/constants/roles"
 
 interface AccountDetailProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  accountId: number | null
+  readonly open: boolean
+  readonly onOpenChange: (open: boolean) => void
+  readonly accountId: number | null
 }
 
 export function AccountDetail({ open, onOpenChange, accountId }: AccountDetailProps) {
@@ -63,11 +62,11 @@ export function AccountDetail({ open, onOpenChange, accountId }: AccountDetailPr
 
         {!loading && account && (
           <div className="space-y-6">
-            {/* Thông tin tài khoản */}
             <DetailSection title="Thông tin tài khoản">
               <DetailRow label="Số điện thoại" value={account.phone} copyable />
               <DetailRow
                 label="Vai trò"
+                value=""
                 renderValue={() => <RoleBadge role={account.role} />}
               />
               <DetailRow
@@ -76,7 +75,6 @@ export function AccountDetail({ open, onOpenChange, accountId }: AccountDetailPr
               />
             </DetailSection>
 
-            {/* Thông tin hồ sơ */}
             {account.profile && (
               <DetailSection title="Thông tin hồ sơ">
                 <DetailRow label="Họ và tên" value={account.profile.fullName || "—"} />
@@ -89,13 +87,11 @@ export function AccountDetail({ open, onOpenChange, accountId }: AccountDetailPr
               </DetailSection>
             )}
 
-            {/* Thông tin thời gian */}
             <DetailSection title="Thông tin thời gian">
               <DetailRow label="Ngày tạo" value={formatDateDetail(account.createdAt)} />
               <DetailRow label="Ngày cập nhật" value={formatDateDetail(account.updatedAt)} />
             </DetailSection>
 
-            {/* Thông tin kỹ thuật */}
             <DetailSection title="Thông tin kỹ thuật">
               <DetailRow label="ID" value={account.id} copyable />
             </DetailSection>

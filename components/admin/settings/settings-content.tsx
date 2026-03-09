@@ -43,10 +43,14 @@ import { useEffect, useState } from "react"
 import type { SettingsStatusCard } from "@/lib/data/types"
 import { SettingsService } from "@/lib/services/settings.service"
 import { AdminStatsGrid, type AdminStatsItem } from "@/components/admin/shared/admin-stats-grid"
+import { DEFAULT_PASSWORD_MIN_LENGTH } from "@/lib/constants/settings-defaults"
+import { toast } from "sonner"
 
 export function SettingsContent() {
   const [systemVersion, setSystemVersion] = useState("")
   const [systemStatusCards, setSystemStatusCards] = useState<SettingsStatusCard[]>([])
+  const [isSaveLoading, setIsSaveLoading] = useState(false)
+  const [isResetLoading, setIsResetLoading] = useState(false)
   const form = useForm<SettingsFormData>({
     resolver: zodResolver(SettingsFormSchema),
     defaultValues: {
@@ -58,7 +62,7 @@ export function SettingsContent() {
       showAvatar: false,
       compactMode: false,
 
-      passwordMinLength: "8",
+      passwordMinLength: DEFAULT_PASSWORD_MIN_LENGTH,
       requireUppercase: false,
       requireNumber: false,
       requireSpecialChar: false,
@@ -83,21 +87,52 @@ export function SettingsContent() {
     mode: "onChange",
   })
 
-  useEffect(() => {
+  const loadSettings = () => {
     Promise.all([
       SettingsService.getSettings(),
       SettingsService.getSystemStatusCards(),
       SettingsService.getVersion(),
-    ]).then(([settings, statusCards, version]) => {
-      form.reset(settings)
-      setSystemStatusCards(statusCards)
-      setSystemVersion(version)
-    })
-  }, [form])
+    ])
+      .then(([settings, statusCards, version]) => {
+        form.reset(settings)
+        setSystemStatusCards(statusCards)
+        setSystemVersion(version)
+      })
+      .catch((err) => {
+        toast.error(err instanceof Error ? err.message : "Không tải được cấu hình")
+      })
+  }
 
-  const handleSave = (values: SettingsFormData) => {
+  useEffect(() => {
+    loadSettings()
+  }, [])
+
+  const handleSave = async (values: SettingsFormData) => {
     const parsed = SettingsFormSchema.parse(values)
-    form.reset(parsed)
+    setIsSaveLoading(true)
+    try {
+      await SettingsService.update(parsed)
+      form.reset(parsed)
+      toast.success("Đã lưu cấu hình")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Lưu cấu hình thất bại")
+    } finally {
+      setIsSaveLoading(false)
+    }
+  }
+
+  const handleReset = async () => {
+    if (!globalThis.window?.confirm("Khôi phục tất cả cài đặt về mặc định?")) return
+    setIsResetLoading(true)
+    try {
+      await SettingsService.reset()
+      loadSettings()
+      toast.success("Đã reset cấu hình")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Reset cấu hình thất bại")
+    } finally {
+      setIsResetLoading(false)
+    }
   }
 
   const statusIconMap = {
@@ -144,11 +179,11 @@ export function SettingsContent() {
           )}
           <Button 
             className="bg-primary text-primary-foreground hover:bg-primary/90"
-            disabled={!form.formState.isDirty}
+            disabled={!form.formState.isDirty || isSaveLoading}
             onClick={form.handleSubmit(handleSave)}
           >
             <Save className="mr-2 h-4 w-4" />
-            Lưu cấu hình
+            {isSaveLoading ? "Đang lưu..." : "Lưu cấu hình"}
           </Button>
         </div>
       </div>
@@ -754,8 +789,13 @@ export function SettingsContent() {
                   <p className="font-medium">Reset cấu hình về mặc định</p>
                   <p className="text-sm text-muted-foreground">Khôi phục tất cả cài đặt về giá trị ban đầu</p>
                 </div>
-                <Button variant="outline" className="border-destructive text-destructive hover:bg-destructive/10 bg-transparent">
-                  Reset cấu hình
+                <Button
+                  variant="outline"
+                  className="border-destructive text-destructive hover:bg-destructive/10 bg-transparent"
+                  disabled={isResetLoading}
+                  onClick={handleReset}
+                >
+                  {isResetLoading ? "Đang xử lý..." : "Reset cấu hình"}
                 </Button>
               </div>
             </CardContent>

@@ -1,28 +1,66 @@
-import { initialModules } from "@/lib/data/mock/home-modules"
+import { ApiClient } from "@/lib/services/api-client"
+import type { HomeModuleApi, HomeModulesPatchRequest } from "@/lib/types/api"
 import type { HomeModule } from "@/lib/data/types"
+import { HOME_MODULE_ICONS } from "@/lib/constants/home-module-icons"
+import { FileText } from "lucide-react"
 
-let modulesStore: HomeModule[] = [...initialModules]
+function apiToDisplay(api: HomeModuleApi): HomeModule {
+  const icon = HOME_MODULE_ICONS[api.id] ?? FileText
+  return {
+    id: api.id,
+    name: api.name,
+    description: api.description,
+    icon,
+    enabled: api.enabled,
+    order: api.sortOrder,
+    itemCount: api.itemCount,
+  }
+}
 
 export class HomeModulesService {
-  static async getAll(): Promise<HomeModule[]> {
-    return modulesStore
-  }
-
-  static async update(id: string, data: Partial<HomeModule>): Promise<HomeModule> {
-    const index = modulesStore.findIndex((module) => module.id === id)
-    if (index === -1) {
-      throw new Error(`Module with id ${id} not found`)
+  static async getPublicModules(): Promise<HomeModule[]> {
+    const response = await ApiClient.get<HomeModuleApi[]>(
+      "/api/v1/public/home-modules",
+      undefined,
+      true
+    )
+    if (response.success && response.data) {
+      return response.data.map(apiToDisplay)
     }
-    const next = { ...modulesStore[index], ...data }
-    modulesStore[index] = next
-    return next
+    throw new Error(response.error?.message ?? "Failed to fetch public home modules")
   }
 
-  static async saveAll(next: readonly HomeModule[]): Promise<HomeModule[]> {
-    modulesStore = next.map((module, index) => ({
-      ...module,
-      order: index + 1,
-    }))
-    return modulesStore
+  static async getAll(): Promise<HomeModule[]> {
+    const response = await ApiClient.get<HomeModuleApi[]>(
+      "/api/v1/admin/home-modules",
+      undefined,
+      true
+    )
+    if (response.success && response.data) {
+      return response.data.map(apiToDisplay)
+    }
+    throw new Error(response.error?.message ?? "Failed to fetch home modules")
+  }
+
+  static async saveAll(modules: readonly HomeModule[]): Promise<HomeModule[]> {
+    const ordered = [...modules].sort((a, b) => a.order - b.order)
+    const payload: HomeModulesPatchRequest = {
+      modules: ordered.map((m) => ({
+        id: m.id,
+        name: m.name,
+        description: m.description,
+        enabled: m.enabled,
+        sortOrder: m.order,
+      })),
+    }
+    const response = await ApiClient.patch<HomeModuleApi[]>(
+      "/api/v1/admin/home-modules",
+      payload,
+      true
+    )
+    if (response.success && response.data) {
+      return response.data.map(apiToDisplay)
+    }
+    throw new Error(response.error?.message ?? "Failed to save home modules")
   }
 }

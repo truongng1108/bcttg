@@ -46,7 +46,6 @@ export function SongCategoryDetailContent({ categoryId }: SongCategoryDetailCont
 
   return (
     <div className="space-y-6">
-      {/* Thông tin cơ bản */}
       <DetailSection title="Thông tin cơ bản">
         <DetailRow label="Tên danh mục" value={category.name} />
         <DetailRow label="Slug" value={category.slug} copyable />
@@ -55,13 +54,11 @@ export function SongCategoryDetailContent({ categoryId }: SongCategoryDetailCont
         <DetailRow label="Thứ tự sắp xếp" value={category.sortOrder} />
       </DetailSection>
 
-      {/* Thông tin thời gian */}
       <DetailSection title="Thông tin thời gian">
         <DetailRow label="Ngày tạo" value={formatDateDetail(category.createdAt)} />
         <DetailRow label="Ngày cập nhật" value={formatDateDetail(category.updatedAt)} />
       </DetailSection>
 
-      {/* Thông tin kỹ thuật */}
       <DetailSection title="Thông tin kỹ thuật">
         <DetailRow label="ID" value={category.id} copyable />
       </DetailSection>

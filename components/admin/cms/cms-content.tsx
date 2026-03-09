@@ -382,7 +382,7 @@ export function CMSContent() {
     if (isMutating) return
     setIsMutating(true)
     try {
-      await ContentCategoriesService.delete(categoryDeleteState.selectedCategory!.id)
+      await ContentCategoriesService.delete(categoryDeleteState.selectedCategory.id)
       await loadCategories()
       toast.success("Đã xóa danh mục")
       setCategoryDeleteState({ dialogOpen: false, selectedCategory: null })
@@ -534,7 +534,7 @@ export function CMSContent() {
     if (isMutating) return
     setIsMutating(true)
     try {
-      await ContentItemsService.delete(Number(contentDeleteState.selectedItem!.id))
+      await ContentItemsService.delete(Number(contentDeleteState.selectedItem.id))
       await loadContent()
       toast.success("Đã xóa bài viết")
     } catch {
@@ -550,12 +550,13 @@ export function CMSContent() {
     if (isMutating) return
     setIsMutating(true)
     try {
+      const selectedItem = contentHideState.selectedItem
       await ContentItemsService.toggleVisibility(
-        Number(contentHideState.selectedItem!.id),
-        !contentHideState.selectedItem!.isVisible
+        Number(selectedItem.id),
+        !selectedItem.isVisible
       )
       await loadContent()
-      toast.success(contentHideState.selectedItem!.isVisible ? "Đã ẩn bài viết" : "Đã hiện bài viết")
+      toast.success(selectedItem.isVisible ? "Đã ẩn bài viết" : "Đã hiện bài viết")
     } catch {
       toast.error("Cập nhật trạng thái bài viết thất bại")
     } finally {

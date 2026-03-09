@@ -23,7 +23,7 @@ export class ContentCategoriesService {
     const response = await ApiClient.get<ContentCategory[]>(
       "/api/v1/public/content-categories",
       params as Record<string, string | number | boolean | null | undefined>,
-      false
+      true
     )
     if (!response.success || !response.data) {
       throw new Error(response.error?.message || "Failed to fetch content categories")
@@ -35,7 +35,7 @@ export class ContentCategoriesService {
     const response = await ApiClient.get<ContentCategory>(
       `/api/v1/public/content-categories/${id}`,
       undefined,
-      false
+      true
     )
     if (!response.success || !response.data) {
       throw new Error(response.error?.message || "Failed to fetch content category")
@@ -82,7 +82,7 @@ export class ContentCategoriesService {
   }
 
   static async update(id: number, data: Partial<ContentCategory>): Promise<ContentCategory> {
-    const response = await ApiClient.put<ContentCategory>(
+    const response = await ApiClient.patch<ContentCategory>(
       `/api/v1/admin/content-categories/${id}`,
       data,
       true

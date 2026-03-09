@@ -36,7 +36,6 @@ export function SongDetailContent({ songId }: SongDetailContentProps) {
       const songData = await SongsService.getByIdAdmin(songId)
       setSong(songData)
 
-      // Use audioMedia from response if available, otherwise load separately
       if (songData.audioMedia) {
         setAudioMedia(songData.audioMedia)
       } else if (songData.audioMediaId) {
@@ -44,16 +43,13 @@ export function SongDetailContent({ songId }: SongDetailContentProps) {
           const media = await MediaService.getById(songData.audioMediaId)
           setAudioMedia(media)
         } catch {
-          // Media might not exist
         }
       }
 
-      // Load category
       try {
         const cat = await SongCategoriesService.getByIdAdmin(songData.categoryId)
         setCategory(cat)
       } catch {
-        // Category might not exist
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Không tải được thông tin ca khúc")
@@ -72,7 +68,6 @@ export function SongDetailContent({ songId }: SongDetailContentProps) {
 
   return (
     <div className="space-y-6">
-      {/* Thông tin cơ bản */}
       <DetailSection title="Thông tin cơ bản">
         <DetailRow label="Tiêu đề" value={song.title} />
         <DetailRow label="Danh mục" value={category?.name || "—"} />
@@ -81,7 +76,6 @@ export function SongDetailContent({ songId }: SongDetailContentProps) {
         <DetailRow label="Thời lượng" value={formatDuration(song.durationSec)} />
       </DetailSection>
 
-      {/* File audio */}
       {audioMedia && (
         <DetailSection title="File audio">
           <div className="py-3 space-y-2">
@@ -112,7 +106,6 @@ export function SongDetailContent({ songId }: SongDetailContentProps) {
         </DetailSection>
       )}
 
-      {/* Lời bài hát */}
       {song.lyric && (
         <DetailSection title="Lời bài hát">
           <div className="py-3">
@@ -123,13 +116,11 @@ export function SongDetailContent({ songId }: SongDetailContentProps) {
         </DetailSection>
       )}
 
-      {/* Thông tin thời gian */}
       <DetailSection title="Thông tin thời gian">
         <DetailRow label="Ngày tạo" value={formatDateDetail(song.createdAt)} />
         <DetailRow label="Ngày cập nhật" value={formatDateDetail(song.updatedAt)} />
       </DetailSection>
 
-      {/* Thông tin kỹ thuật */}
       <DetailSection title="Thông tin kỹ thuật">
         <DetailRow label="ID" value={song.id} copyable />
         <DetailRow label="Category ID" value={song.categoryId} copyable />

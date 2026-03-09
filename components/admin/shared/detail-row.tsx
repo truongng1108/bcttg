@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 interface DetailRowProps {
-  label: string
-  value: string | number | null | undefined
-  copyable?: boolean
-  className?: string
-  renderValue?: () => React.ReactNode
+  readonly label: string
+  readonly value?: string | number | null
+  readonly copyable?: boolean
+  readonly className?: string
+  readonly renderValue?: () => React.ReactNode
 }
 
 export function DetailRow({
@@ -33,12 +33,14 @@ export function DetailRow({
     }
   }
 
-  const displayValue =
-    value === null || value === undefined
-      ? "—"
-      : renderValue
-        ? renderValue()
-        : String(value)
+  let displayValue: React.ReactNode = "—"
+  if (value !== null && value !== undefined) {
+    if (renderValue) {
+      displayValue = renderValue()
+    } else {
+      displayValue = String(value)
+    }
+  }
 
   return (
     <div className={cn("flex items-start gap-4 py-3 border-b last:border-0", className)}>

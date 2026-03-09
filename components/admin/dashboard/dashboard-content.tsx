@@ -9,6 +9,7 @@ import { StatusItem } from "./components/status-item"
 import { PendingRow } from "./components/pending-row"
 import { DashboardService } from "@/lib/services/dashboard.service"
 import { formatNumber } from "@/lib/utils/formatters"
+import type { DashboardOverview } from "@/lib/types/api"
 import type {
   DashboardPendingItem,
   DashboardSummaryCard,
@@ -23,6 +24,7 @@ export function DashboardContent() {
   const [summaryCards, setSummaryCards] = useState<DashboardSummaryCard[]>([])
   const [systemStatusItems, setSystemStatusItems] = useState<DashboardSystemStatusItem[]>([])
   const [pendingItems, setPendingItems] = useState<DashboardPendingItem[]>([])
+  const [overview, setOverview] = useState<DashboardOverview | null>(null)
   useEffect(() => {
     setIsLoading(true)
     DashboardService.getOverview()
@@ -115,6 +117,7 @@ export function DashboardContent() {
           }
         })
         setPendingItems(pending)
+        setOverview(data)
       })
       .catch(() => {
         toast.error("Không tải được dữ liệu dashboard")
@@ -182,9 +185,9 @@ export function DashboardContent() {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <ContentChart />
-        <CategoryChart />
-        <AccessChart />
+        <ContentChart data={overview?.monthlyContent ?? []} />
+        <CategoryChart data={overview?.contentDistribution ?? []} />
+        <AccessChart data={overview?.weeklyVisits ?? []} />
       </div>
 
       {/* Activity & Quick Access */}

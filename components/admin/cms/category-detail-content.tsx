@@ -31,13 +31,11 @@ export function CategoryDetailContent({ categoryId }: CategoryDetailContentProps
       const cat = await ContentCategoriesService.getByIdAdmin(categoryId)
       setCategory(cat)
 
-      // Load parent category if exists
       if (cat.parentId) {
         try {
           const parent = await ContentCategoriesService.getByIdAdmin(cat.parentId)
           setParentCategory(parent)
         } catch {
-          // Parent might not exist
         }
       }
     } catch (err) {
@@ -57,7 +55,6 @@ export function CategoryDetailContent({ categoryId }: CategoryDetailContentProps
 
   return (
     <div className="space-y-6">
-      {/* Thông tin cơ bản */}
       <DetailSection title="Thông tin cơ bản">
         <DetailRow label="Tên danh mục" value={category.name} />
         <DetailRow label="Slug" value={category.slug} copyable />
@@ -74,13 +71,11 @@ export function CategoryDetailContent({ categoryId }: CategoryDetailContentProps
         <DetailRow label="Thứ tự sắp xếp" value={category.sortOrder} />
       </DetailSection>
 
-      {/* Thông tin thời gian */}
       <DetailSection title="Thông tin thời gian">
         <DetailRow label="Ngày tạo" value={formatDateDetail(category.createdAt)} />
         <DetailRow label="Ngày cập nhật" value={formatDateDetail(category.updatedAt)} />
       </DetailSection>
 
-      {/* Thông tin kỹ thuật */}
       <DetailSection title="Thông tin kỹ thuật">
         <DetailRow label="ID" value={category.id} copyable />
         {category.parentId && (

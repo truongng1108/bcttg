@@ -25,7 +25,7 @@ export class ContentItemsService {
     const response = await ApiClient.get<ContentItem[]>(
       "/api/v1/public/content-items",
       params as Record<string, string | number | boolean | null | undefined>,
-      false
+      true
     )
     if (!response.success || !response.data) {
       throw new Error(response.error?.message || "Failed to fetch content items")
@@ -37,7 +37,7 @@ export class ContentItemsService {
     const response = await ApiClient.get<ContentItem>(
       `/api/v1/public/content-items/${id}`,
       undefined,
-      false
+      true
     )
     if (!response.success || !response.data) {
       throw new Error(response.error?.message || "Failed to fetch content item")
@@ -84,7 +84,7 @@ export class ContentItemsService {
   }
 
   static async update(id: number, data: Partial<ContentItem>): Promise<ContentItem> {
-    const response = await ApiClient.put<ContentItem>(
+    const response = await ApiClient.patch<ContentItem>(
       `/api/v1/admin/content-items/${id}`,
       data,
       true

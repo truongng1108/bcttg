@@ -35,7 +35,6 @@ import { useForm } from "react-hook-form"
 import { NoteCreateFormSchema, type NoteCreateFormData, type NoteUpdateFormData } from "@/lib/schemas/note.schema"
 
 import type { SelectOption } from "@/lib/data/types"
-import type { PersonalNote, PaginationMeta } from "@/lib/types/api"
 import { NotesService } from "@/lib/services/notes.service"
 import { toast } from "sonner"
 import { AdminLoadingState } from "@/components/admin/shared/admin-loading-state"
@@ -46,13 +45,12 @@ import type { NoteDisplay } from "@/lib/types/display"
 export function NotesContent() {
   const router = useRouter()
   const [notes, setNotes] = useState<NoteDisplay[]>([])
-  const [currentPage, setCurrentPage] = useState(1)
+  const [currentPage] = useState(1)
   const [pageSize] = useState(20)
   const [totalPages, setTotalPages] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
   const [isMutating, setIsMutating] = useState(false)
   const [categoryOptions] = useState<SelectOption[]>([])
-  // Options imported from constants
   const [searchQuery, setSearchQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [starredFilter, setStarredFilter] = useState("all")
@@ -61,8 +59,6 @@ export function NotesContent() {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedNote, setSelectedNote] = useState<NoteDisplay | null>(null)
-  const [noteDetailOpen, setNoteDetailOpen] = useState(false)
-  const [selectedNoteId, setSelectedNoteId] = useState<number | null>(null)
 
   const loadNotes = async () => {
     setIsLoading(true)

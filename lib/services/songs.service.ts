@@ -18,7 +18,7 @@ export class SongsService {
     const response = await ApiClient.get<Song[]>(
       "/api/v1/public/songs",
       params as Record<string, string | number | boolean | null | undefined>,
-      false
+      true
     )
     if (!response.success || !response.data) {
       throw new Error(response.error?.message || "Failed to fetch songs")
@@ -27,7 +27,7 @@ export class SongsService {
   }
 
   static async getByIdPublic(id: number): Promise<Song> {
-    const response = await ApiClient.get<Song>(`/api/v1/public/songs/${id}`, undefined, false)
+    const response = await ApiClient.get<Song>(`/api/v1/public/songs/${id}`, undefined, true)
     if (!response.success || !response.data) {
       throw new Error(response.error?.message || "Failed to fetch song")
     }
@@ -65,7 +65,7 @@ export class SongsService {
   }
 
   static async update(id: number, data: Partial<Song>): Promise<Song> {
-    const response = await ApiClient.put<Song>(`/api/v1/admin/songs/${id}`, data, true)
+    const response = await ApiClient.patch<Song>(`/api/v1/admin/songs/${id}`, data, true)
     if (!response.success || !response.data) {
       throw new Error(response.error?.message || "Failed to update song")
     }

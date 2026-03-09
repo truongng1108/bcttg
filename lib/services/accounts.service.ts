@@ -51,7 +51,7 @@ export class AccountsService {
   }
 
   static async update(id: number, data: UserUpdateRequest): Promise<UserAccount> {
-    const response = await ApiClient.put<UserAccount>(`/api/v1/admin/users/${id}`, data, true)
+    const response = await ApiClient.patch<UserAccount>(`/api/v1/admin/users/${id}`, data, true)
     if (!response.success || !response.data) {
       throw new Error(response.error?.message || "Failed to update user")
     }

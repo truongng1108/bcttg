@@ -23,7 +23,7 @@ export class DataProfilesService {
     const response = await ApiClient.get<DataProfile[]>(
       "/api/v1/public/data-profiles",
       params as Record<string, string | number | boolean | null | undefined>,
-      false
+      true
     )
     if (!response.success || !response.data) {
       throw new Error(response.error?.message || "Failed to fetch data profiles")
@@ -35,7 +35,7 @@ export class DataProfilesService {
     const response = await ApiClient.get<DataProfile>(
       `/api/v1/public/data-profiles/${id}`,
       undefined,
-      false
+      true
     )
     if (!response.success || !response.data) {
       throw new Error(response.error?.message || "Failed to fetch data profile")
@@ -82,7 +82,7 @@ export class DataProfilesService {
   }
 
   static async update(id: number, data: Partial<DataProfile>): Promise<DataProfile> {
-    const response = await ApiClient.put<DataProfile>(
+    const response = await ApiClient.patch<DataProfile>(
       `/api/v1/admin/data-profiles/${id}`,
       data,
       true

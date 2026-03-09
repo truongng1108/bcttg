@@ -47,7 +47,6 @@ export function NoteDetailContent({ noteId }: NoteDetailContentProps) {
 
   return (
     <div className="space-y-6">
-      {/* Thông tin cơ bản */}
       <DetailSection title="Thông tin cơ bản">
         <DetailRow label="Tiêu đề" value={note.title} />
         <DetailRow
@@ -84,27 +83,23 @@ export function NoteDetailContent({ noteId }: NoteDetailContentProps) {
         )}
       </DetailSection>
 
-      {/* Nội dung */}
       <DetailSection title="Nội dung">
         <div className="py-3">
           <pre className="whitespace-pre-wrap text-sm font-sans">{note.content}</pre>
         </div>
       </DetailSection>
 
-      {/* Nhắc nhở */}
       {note.reminderAt && (
         <DetailSection title="Nhắc nhở">
           <DetailRow label="Thời gian nhắc nhở" value={formatReminderDate(note.reminderAt)} />
         </DetailSection>
       )}
 
-      {/* Thông tin thời gian */}
       <DetailSection title="Thông tin thời gian">
         <DetailRow label="Ngày tạo" value={formatDateDetail(note.createdAt)} />
         <DetailRow label="Ngày cập nhật" value={formatDateDetail(note.updatedAt)} />
       </DetailSection>
 
-      {/* Thông tin kỹ thuật */}
       <DetailSection title="Thông tin kỹ thuật">
         <DetailRow label="ID" value={note.id} copyable />
         <DetailRow label="User ID" value={note.userId} copyable />

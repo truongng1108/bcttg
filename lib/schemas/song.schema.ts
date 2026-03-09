@@ -27,6 +27,21 @@ export const SongCreateFormSchema = z.object({
   audio: z.instanceof(File).optional().nullable(),
 })
 
+export const SongAudioPayloadSchema = z
+  .object({
+    audioMediaId: z.number().int().nullable(),
+    audioUrl: z.string().nullable(),
+  })
+  .refine(
+    (data) => {
+      const hasMedia = data.audioMediaId != null && data.audioMediaId > 0
+      const hasUrl = data.audioUrl != null && data.audioUrl.trim() !== ""
+      return (hasMedia && !hasUrl) || (!hasMedia && hasUrl)
+    },
+    { message: "Chỉ được cung cấp đúng một trong hai: audioMediaId hoặc audioUrl" }
+  )
+
 export type SongEntity = z.infer<typeof SongEntitySchema>
 export type SongCreateFormData = z.infer<typeof SongCreateFormSchema>
+export type SongAudioPayload = z.infer<typeof SongAudioPayloadSchema>
 

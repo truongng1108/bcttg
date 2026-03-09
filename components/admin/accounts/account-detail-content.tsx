@@ -47,7 +47,6 @@ export function AccountDetailContent({ accountId }: AccountDetailContentProps) {
 
   return (
     <div className="space-y-6">
-      {/* Thông tin tài khoản */}
       <DetailSection title="Thông tin tài khoản">
         <DetailRow label="Số điện thoại" value={account.phone} copyable />
         <DetailRow
@@ -60,7 +59,6 @@ export function AccountDetailContent({ accountId }: AccountDetailContentProps) {
         />
       </DetailSection>
 
-      {/* Thông tin hồ sơ */}
       {account.profile && (
         <DetailSection title="Thông tin hồ sơ">
           <DetailRow label="Họ và tên" value={account.profile.fullName || "—"} />
@@ -73,13 +71,11 @@ export function AccountDetailContent({ accountId }: AccountDetailContentProps) {
         </DetailSection>
       )}
 
-      {/* Thông tin thời gian */}
       <DetailSection title="Thông tin thời gian">
         <DetailRow label="Ngày tạo" value={formatDateDetail(account.createdAt)} />
         <DetailRow label="Ngày cập nhật" value={formatDateDetail(account.updatedAt)} />
       </DetailSection>
 
-      {/* Thông tin kỹ thuật */}
       <DetailSection title="Thông tin kỹ thuật">
         <DetailRow label="ID" value={account.id} copyable />
       </DetailSection>

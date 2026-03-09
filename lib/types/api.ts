@@ -46,6 +46,7 @@ export interface ContentCategory {
 export interface ContentItem {
   id: number
   categoryId: number
+  type?: string
   title: string
   summary: string | null
   bodyHtml: string | null
@@ -252,9 +253,41 @@ export interface UserCreateRequest {
 }
 
 export interface UserUpdateRequest {
-  phone: string
-  role: UserRole
-  isActive: boolean
-  profile: UserProfilePayload
+  phone?: string
+  role?: UserRole
+  isActive?: boolean
+  profile?: UserProfilePayload
+}
+
+export interface HomeModuleApi {
+  id: string
+  name: string
+  description: string
+  enabled: boolean
+  sortOrder: number
+  itemCount: number
+  updatedAt?: string
+}
+
+export interface HomeModulesPatchRequest {
+  modules: Array<{
+    id: string
+    name: string
+    description: string
+    enabled: boolean
+    sortOrder: number
+  }>
+}
+
+export interface SettingsStatusItem {
+  id: string
+  label: string
+  status: string
+  detail: string
+}
+
+export interface SettingsVersionResponse {
+  version?: string
+  [key: string]: string | number | boolean | undefined
 }
 

@@ -34,7 +34,6 @@ export function ProfileDetailContent({ profileId }: ProfileDetailContentProps) {
       const profileData = await DataProfilesService.getByIdAdmin(profileId)
       setProfile(profileData)
 
-      // Use avatarMedia from response if available, otherwise load separately
       if (profileData.avatarMedia) {
         setAvatarMedia(profileData.avatarMedia)
       } else if (profileData.avatarMediaId) {
@@ -42,7 +41,6 @@ export function ProfileDetailContent({ profileId }: ProfileDetailContentProps) {
           const media = await MediaService.getById(profileData.avatarMediaId)
           setAvatarMedia(media)
         } catch {
-          // Media might not exist
         }
       }
     } catch (err) {
@@ -62,7 +60,6 @@ export function ProfileDetailContent({ profileId }: ProfileDetailContentProps) {
 
   return (
     <div className="space-y-6">
-      {/* Ảnh đại diện */}
       {avatarMedia && (
         <DetailSection title="Ảnh đại diện">
           <div className="py-3 space-y-3">
@@ -89,7 +86,6 @@ export function ProfileDetailContent({ profileId }: ProfileDetailContentProps) {
         </DetailSection>
       )}
 
-      {/* Thông tin cơ bản */}
       <DetailSection title="Thông tin cơ bản">
         <DetailRow label="Họ và tên" value={profile.fullName} />
         <DetailRow
@@ -104,14 +100,12 @@ export function ProfileDetailContent({ profileId }: ProfileDetailContentProps) {
         <DetailRow label="Thứ tự sắp xếp" value={profile.sortOrder} />
       </DetailSection>
 
-      {/* Thông tin liên hệ */}
       <DetailSection title="Thông tin liên hệ">
         <DetailRow label="Số điện thoại" value={profile.contactPhone || "—"} copyable />
         <DetailRow label="Ngày sinh" value={formatDateOnly(profile.birthDate)} />
         <DetailRow label="Quê quán" value={profile.hometown || "—"} />
       </DetailSection>
 
-      {/* Tóm tắt */}
       {profile.summary && (
         <DetailSection title="Tóm tắt">
           <div className="py-3">
@@ -120,7 +114,6 @@ export function ProfileDetailContent({ profileId }: ProfileDetailContentProps) {
         </DetailSection>
       )}
 
-      {/* Tiểu sử */}
       {profile.biography && (
         <DetailSection title="Tiểu sử">
           <div className="py-3">
@@ -129,7 +122,6 @@ export function ProfileDetailContent({ profileId }: ProfileDetailContentProps) {
         </DetailSection>
       )}
 
-      {/* Thành tích */}
       {profile.achievements && (
         <DetailSection title="Thành tích">
           <div className="py-3">
@@ -138,13 +130,11 @@ export function ProfileDetailContent({ profileId }: ProfileDetailContentProps) {
         </DetailSection>
       )}
 
-      {/* Thông tin thời gian */}
       <DetailSection title="Thông tin thời gian">
         <DetailRow label="Ngày tạo" value={formatDateDetail(profile.createdAt)} />
         <DetailRow label="Ngày cập nhật" value={formatDateDetail(profile.updatedAt)} />
       </DetailSection>
 
-      {/* Thông tin kỹ thuật */}
       <DetailSection title="Thông tin kỹ thuật">
         <DetailRow label="ID" value={profile.id} copyable />
         {profile.avatarMediaId && (

@@ -11,7 +11,11 @@ import { Switch } from "@/components/ui/switch"
 import { DataTable, type Column } from "@/components/admin/shared/data-table"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { SongCreateFormSchema, type SongCreateFormData } from "@/lib/schemas/song.schema"
+import {
+  SongCreateFormSchema,
+  SongAudioPayloadSchema,
+  type SongCreateFormData,
+} from "@/lib/schemas/song.schema"
 import type { SelectOption } from "@/lib/data/types"
 import type { Song, SongCategory } from "@/lib/types/api"
 import { SongsService } from "@/lib/services/songs.service"
@@ -211,6 +215,8 @@ export function SongsContent() {
         audioUrl = null
       }
 
+      SongAudioPayloadSchema.parse({ audioMediaId, audioUrl })
+
       const updateData: Partial<Song> = {
         categoryId,
         title: parsed.title,
@@ -286,6 +292,8 @@ export function SongsContent() {
         const media = await MediaService.upload(parsed.audio)
         audioMediaId = media.id
       }
+
+      SongAudioPayloadSchema.parse({ audioMediaId, audioUrl })
 
       const createData: Partial<Song> = {
         categoryId,

@@ -4,6 +4,7 @@ import type React from "react"
 import { cn } from "@/lib/utils"
 import {
   LayoutDashboard,
+  Home,
   Users,
   LayoutGrid,
   FileText,
@@ -50,6 +51,12 @@ const navItems: NavItem[] = [
     title: "Dashboard",
     href: "/",
     icon: LayoutDashboard,
+  },
+  {
+    id: "trang-chu",
+    title: "Trang chủ",
+    href: "/trang-chu",
+    icon: Home,
   },
   {
     id: "accounts",
