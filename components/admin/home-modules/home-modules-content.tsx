@@ -46,10 +46,28 @@ export function HomeModulesContent() {
       })
   }, [])
 
-  const toggleModule = (id: string) => {
-    setModules(prev => 
-      prev.map(m => m.id === id ? { ...m, enabled: !m.enabled } : m)
+  const persistModules = async (
+    nextModules: HomeModule[],
+    successMessage: string
+  ) => {
+    const ordered = [...nextModules].sort((a, b) => a.order - b.order)
+    const saved = await HomeModulesService.saveAll(ordered)
+    setModules(saved)
+    setBaselineModules(saved)
+    toast.success(successMessage)
+  }
+
+  const toggleModule = async (id: string) => {
+    const nextModules = modules.map((m) =>
+      m.id === id ? { ...m, enabled: !m.enabled } : m
     )
+    setModules(nextModules)
+    try {
+      await persistModules(nextModules, "Đã cập nhật module")
+    } catch (err) {
+      setModules(baselineModules)
+      toast.error(err instanceof Error ? err.message : "Cập nhật module thất bại")
+    }
   }
 
   const openEditDialog = (module: HomeModule) => {
@@ -73,21 +91,22 @@ export function HomeModulesContent() {
     }
   }, [editDialogOpen, editForm, editingModule])
 
-  const handleEditSubmit = (values: HomeModuleEditFormData) => {
+  const handleEditSubmit = async (values: HomeModuleEditFormData) => {
     if (!editingModule) return
     const parsed = HomeModuleEditFormSchema.parse(values)
     const orderNumber = parsed.order ? Number(parsed.order) : editingModule.order
     const normalizedOrder = Number.isFinite(orderNumber) ? orderNumber : editingModule.order
-
-    setModules(prev =>
-      prev.map(m =>
-        m.id === editingModule.id
-          ? { ...m, name: parsed.name, description: parsed.description || "", order: normalizedOrder }
-          : m
-      )
+    const nextModules = modules.map((m) =>
+      m.id === editingModule.id
+        ? { ...m, name: parsed.name, description: parsed.description || "", order: normalizedOrder }
+        : m
     )
-
-    setEditDialogOpen(false)
+    try {
+      await persistModules(nextModules, "Đã cập nhật module")
+      setEditDialogOpen(false)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Cập nhật module thất bại")
+    }
   }
 
   const enabledCount = modules.filter(m => m.enabled).length
@@ -102,17 +121,19 @@ export function HomeModulesContent() {
     if (active.id === over.id) {
       return
     }
-    setModules(prev => {
-      const oldIndex = prev.findIndex(module => module.id === active.id)
-      const newIndex = prev.findIndex(module => module.id === over.id)
-      if (oldIndex === -1 || newIndex === -1) {
-        return prev
-      }
-      const reordered = arrayMove(prev, oldIndex, newIndex).map((module, index) => ({
-        ...module,
-        order: index + 1,
-      }))
-      return reordered
+    const oldIndex = modules.findIndex((module) => module.id === active.id)
+    const newIndex = modules.findIndex((module) => module.id === over.id)
+    if (oldIndex === -1 || newIndex === -1) {
+      return
+    }
+    const reordered = arrayMove(modules, oldIndex, newIndex).map((module, index) => ({
+      ...module,
+      order: index + 1,
+    }))
+    setModules(reordered)
+    persistModules(reordered, "Đã cập nhật thứ tự module").catch((err) => {
+      setModules(baselineModules)
+      toast.error(err instanceof Error ? err.message : "Cập nhật thứ tự thất bại")
     })
   }
 
@@ -157,12 +178,8 @@ export function HomeModulesContent() {
     if (!isDirty) {
       return
     }
-    const ordered = [...modules].sort((a, b) => a.order - b.order)
     try {
-      const saved = await HomeModulesService.saveAll(ordered)
-      setModules(saved)
-      setBaselineModules(saved)
-      toast.success("Đã lưu cấu hình module trang chủ")
+      await persistModules(modules, "Đã lưu cấu hình module trang chủ")
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Lưu cấu hình thất bại")
     }

@@ -281,13 +281,109 @@ export interface HomeModulesPatchRequest {
 
 export interface SettingsStatusItem {
   id: string
-  label: string
-  status: string
-  detail: string
+  title?: string
+  value?: string
+  state?: string
+  label?: string
+  status?: string
+  detail?: string
 }
 
 export interface SettingsVersionResponse {
   version?: string
   [key: string]: string | number | boolean | undefined
+}
+
+export interface SettingsTestEmailRequest {
+  to: string
+  subject: string
+  body: string
+}
+
+export interface SettingsTestEmailResponse {
+  sentTo: string
+  sentAt: string
+  message: string
+}
+
+export interface SettingsBackupItem {
+  id: string
+  fileName: string
+  sizeBytes: number
+  modifiedAt: string
+  restorable: boolean
+}
+
+export type ReportsPeriod = "week" | "month" | "quarter" | "year"
+
+export interface ReportsSummaryCardItem {
+  id: string
+  title: string
+  value: string | number
+  change: number
+  period: string
+  iconKey: "views" | "actions" | "users" | "avgTime"
+}
+
+export interface ReportsTrendSeriesItem {
+  label: string
+  views: number
+  edits: number
+  logins: number
+}
+
+export interface ReportsUserActivityItem {
+  name: string
+  value: number
+  activity: number
+}
+
+export interface ReportsTopContentItem {
+  title: string
+  views: number
+  trend: number
+}
+
+export interface ReportsOverviewResponse {
+  summaryCards: ReportsSummaryCardItem[]
+  trendSeries: ReportsTrendSeriesItem[]
+  userActivity: ReportsUserActivityItem[]
+  topContent: ReportsTopContentItem[]
+}
+
+export type LogsPeriod = "week" | "month"
+
+export interface LoginLogApiItem {
+  id: number
+  userId: number | null
+  userName: string
+  unitName: string
+  action: string
+  ipAddress: string
+  device: string
+  status: string
+  failureReason: string | null
+  createdAt: string
+}
+
+export interface SystemLogApiItem {
+  id: number
+  actorId: number | null
+  actorName: string
+  module: string
+  action: string
+  description: string
+  level: string
+  metadata: string | null
+  createdAt: string
+}
+
+export interface LogsSummaryResponse {
+  totalLogins?: number
+  successfulLogins?: number
+  failedLogins?: number
+  systemActions?: number
+  totalActions?: number
+  errorCount?: number
 }
 

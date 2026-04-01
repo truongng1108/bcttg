@@ -141,7 +141,7 @@ export interface SettingsStatusCard {
 }
 
 export interface MonthlyData {
-  month: string
+  label: string
   views: number
   edits: number
   logins: number

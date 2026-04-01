@@ -1,5 +1,7 @@
 import type { ApiResponse, ApiError } from "@/lib/types/api"
 
+type QueryParams = Record<string, string | number | boolean | null | undefined>
+
 export class ApiClient {
   private static readonly baseUrl =
     process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.hotrocode.tech/"
@@ -21,7 +23,7 @@ export class ApiClient {
     globalThis.window.sessionStorage.removeItem("auth_token")
   }
 
-  static buildQueryString(params: Record<string, string | number | boolean | null | undefined>): string {
+  static buildQueryString(params: QueryParams): string {
     const searchParams = new URLSearchParams()
     Object.entries(params).forEach(([key, value]) => {
       if (value !== null && value !== undefined) {
@@ -73,9 +75,25 @@ export class ApiClient {
     return data as ApiResponse<T>
   }
 
+  private static extractFilename(contentDisposition: string | null): string | null {
+    if (!contentDisposition) return null
+    const utf8Regex = /filename\*=UTF-8''([^;]+)/i
+    const utf8Match = utf8Regex.exec(contentDisposition)
+    if (utf8Match?.[1]) {
+      try {
+        return decodeURIComponent(utf8Match[1])
+      } catch {
+        return utf8Match[1]
+      }
+    }
+    const plainRegex = /filename="?([^"]+)"?/i
+    const plainMatch = plainRegex.exec(contentDisposition)
+    return plainMatch?.[1] ?? null
+  }
+
   static async get<T>(
     endpoint: string,
-    params?: Record<string, string | number | boolean | null | undefined>,
+    params?: QueryParams,
     requireAuth = false
   ): Promise<ApiResponse<T>> {
     const queryString = params ? this.buildQueryString(params) : ""
@@ -153,5 +171,34 @@ export class ApiClient {
       body: formData,
     })
     return this.handleResponse<T>(response, requireAuth)
+  }
+
+  static async download(
+    endpoint: string,
+    params?: QueryParams,
+    requireAuth = true
+  ): Promise<{ blob: Blob; filename: string | null }> {
+    const queryString = params ? this.buildQueryString(params) : ""
+    const url = `${this.baseUrl.replace(/\/$/, "")}${endpoint}${queryString}`
+    const response = await fetch(url, {
+      method: "GET",
+      headers: this.getHeaders(requireAuth, ""),
+    })
+    if (response.status === 401 && requireAuth) {
+      this.handleUnauthorized()
+      throw new Error("Unauthorized")
+    }
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      const error: ApiError = data.error || {
+        code: `HTTP_${response.status}`,
+        message: response.statusText || "An error occurred",
+        details: [],
+      }
+      throw new Error(error.message || `HTTP error! status: ${response.status}`)
+    }
+    const blob = await response.blob()
+    const filename = this.extractFilename(response.headers.get("Content-Disposition"))
+    return { blob, filename }
   }
 }

@@ -3,7 +3,13 @@
 import { ApiClient } from "@/lib/services/api-client"
 import type { SettingsFormData } from "@/lib/schemas/settings.schema"
 import type { SettingsStatusCard, SettingsStatusIconKey, SettingsStatusVariant } from "@/lib/data/types"
-import type { SettingsStatusItem, SettingsVersionResponse } from "@/lib/types/api"
+import type {
+  SettingsBackupItem,
+  SettingsStatusItem,
+  SettingsTestEmailRequest,
+  SettingsTestEmailResponse,
+  SettingsVersionResponse,
+} from "@/lib/types/api"
 
 type StatusIconKeyMap = Record<string, SettingsStatusIconKey>
 type StatusVariantMap = Record<string, SettingsStatusVariant>
@@ -20,20 +26,24 @@ const STATUS_TO_VARIANT: StatusVariantMap = {
   active: "success",
   ok: "success",
   success: "success",
+  healthy: "success",
   warning: "accent",
   error: "primary",
   failed: "primary",
+  unknown: "default",
   default: "default",
 }
 
 function mapStatusToCard(item: SettingsStatusItem): SettingsStatusCard {
   const iconKey = STATUS_ID_TO_ICON[item.id] ?? "server"
-  const statusKey = item.status?.toLowerCase() ?? ""
+  const statusKey = (item.state ?? item.status ?? "").toLowerCase()
   const variant = STATUS_TO_VARIANT[statusKey] ?? "default"
+  const title = item.title ?? item.label ?? item.id
+  const value = item.value ?? item.detail ?? item.status ?? item.state ?? ""
   return {
     id: item.id,
-    title: item.label,
-    value: item.detail ? item.detail : item.status,
+    title,
+    value,
     iconKey,
     variant,
   }
@@ -149,5 +159,49 @@ export class SettingsService {
     const response = await ApiClient.post<void>("/api/v1/admin/settings/reset", {}, true)
     if (response.success) return
     throw new Error(response.error?.message ?? "Failed to reset settings")
+  }
+
+  static async testEmail(payload: SettingsTestEmailRequest): Promise<SettingsTestEmailResponse> {
+    const response = await ApiClient.post<SettingsTestEmailResponse>(
+      "/api/v1/admin/settings/test-email",
+      payload,
+      true
+    )
+    if (response.success && response.data) {
+      return response.data
+    }
+    throw new Error(response.error?.message ?? "Failed to send test email")
+  }
+
+  static async getBackups(): Promise<SettingsBackupItem[]> {
+    const response = await ApiClient.get<SettingsBackupItem[]>(
+      "/api/v1/admin/settings/backups",
+      undefined,
+      true
+    )
+    if (response.success && response.data) {
+      return response.data
+    }
+    throw new Error(response.error?.message ?? "Failed to fetch backups")
+  }
+
+  static async downloadBackup(id: string): Promise<{ blob: Blob; filename: string | null }> {
+    return ApiClient.download(`/api/v1/admin/settings/backups/${id}/download`, undefined, true)
+  }
+
+  static async restoreBackup(id: string): Promise<void> {
+    const response = await ApiClient.post<void>(
+      `/api/v1/admin/settings/backups/${id}/restore`,
+      {},
+      true
+    )
+    if (response.success) return
+    throw new Error(response.error?.message ?? "Failed to restore backup")
+  }
+
+  static async clearCache(): Promise<void> {
+    const response = await ApiClient.post<void>("/api/v1/admin/settings/cache/clear", {}, true)
+    if (response.success) return
+    throw new Error(response.error?.message ?? "Failed to clear cache")
   }
 }

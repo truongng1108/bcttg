@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, Calendar, Eye, Loader2, Music, Play, Pause } from "lucide-react"
+import { ArrowLeft, Calendar, Loader2, Music, Play, Pause } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { SongsService } from "@/lib/services/songs.service"
@@ -11,6 +11,7 @@ import { MediaService } from "@/lib/services/media.service"
 import type { Song, SongCategory } from "@/lib/types/api"
 import { toast } from "sonner"
 import { StatusPage } from "@/components/shared/status-page"
+import { getMediaUrl } from "@/lib/utils/media"
 
 export default function SongDetailPage() {
   const params = useParams()
@@ -27,7 +28,7 @@ export default function SongDetailPage() {
   const songId = params?.id ? Number(params.id) : null
 
   useEffect(() => {
-    if (!songId || isNaN(songId)) {
+    if (!songId || Number.isNaN(songId)) {
       setError("ID bài hát không hợp lệ")
       setIsLoading(false)
       return
@@ -52,15 +53,12 @@ export default function SongDetailPage() {
 
         if (songData.audioUrl) {
           setAudioUrl(songData.audioUrl)
+        } else if (songData.audioMedia) {
+          setAudioUrl(getMediaUrl(songData.audioMedia))
         } else if (songData.audioMediaId) {
           try {
             const media = await MediaService.getById(songData.audioMediaId)
-            if (media?.url) {
-              setAudioUrl(media.url)
-            } else if (media?.storageKey) {
-              const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.hotrocode.tech"
-              setAudioUrl(`${baseUrl}/files/${media.storageKey}`)
-            }
+            setAudioUrl(getMediaUrl(media))
           } catch {
             toast.error("Không tải được file âm thanh")
           }

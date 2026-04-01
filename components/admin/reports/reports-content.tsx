@@ -32,27 +32,32 @@ import { ChartContainer } from "./components/chart-container"
 import { TIME_PERIODS } from "./constants/time-periods"
 import { EXPORT_TYPES } from "./constants/export-types"
 import { handleExportExcel } from "./utils/export-handlers"
+import { toast } from "sonner"
 
 export function ReportsContent() {
-  const [timePeriod, setTimePeriod] = useState("year")
+  const [timePeriod, setTimePeriod] = useState<"week" | "month" | "quarter" | "year">("year")
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([])
   const [userActivityData, setUserActivityData] = useState<UserActivityData[]>([])
   const [topContentData, setTopContentData] = useState<TopContentData[]>([])
   const [summaryCards, setSummaryCards] = useState<ReportsSummaryCard[]>([])
+  const handleTimePeriodChange = (value: string) => {
+    if (value === "week" || value === "month" || value === "quarter" || value === "year") {
+      setTimePeriod(value)
+    }
+  }
 
   useEffect(() => {
-    Promise.all([
-      ReportsService.getMonthlyData(),
-      ReportsService.getUserActivityData(),
-      ReportsService.getTopContentData(),
-      ReportsService.getSummaryCards(),
-    ]).then(([monthly, userActivity, topContent, summary]) => {
-      setMonthlyData(monthly)
-      setUserActivityData(userActivity)
-      setTopContentData(topContent)
-      setSummaryCards(summary)
-    })
-  }, [])
+    ReportsService.getOverview(timePeriod)
+      .then((overview) => {
+        setMonthlyData(overview.monthlyData)
+        setUserActivityData(overview.userActivityData)
+        setTopContentData(overview.topContentData)
+        setSummaryCards(overview.summaryCards)
+      })
+      .catch((err) => {
+        toast.error(err instanceof Error ? err.message : "Không tải được dữ liệu báo cáo")
+      })
+  }, [timePeriod])
 
   const summaryIconMap = {
     views: Eye,
@@ -73,7 +78,7 @@ export function ReportsContent() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={timePeriod} onValueChange={setTimePeriod}>
+          <Select value={timePeriod} onValueChange={handleTimePeriodChange}>
             <SelectTrigger className="w-40">
               <Calendar className="mr-2 h-4 w-4" />
               <SelectValue />
@@ -88,7 +93,11 @@ export function ReportsContent() {
           </Select>
           <Button
             className="gap-2 bg-secondary text-secondary-foreground hover:bg-secondary/90"
-            onClick={() => handleExportExcel(EXPORT_TYPES.TONG_HOP)}
+            onClick={() => {
+              handleExportExcel(EXPORT_TYPES.TONG_HOP, timePeriod).catch((err) => {
+                toast.error(err instanceof Error ? err.message : "Xuất báo cáo thất bại")
+              })
+            }}
           >
             <FileSpreadsheet className="h-4 w-4" />
             Xuất báo cáo Excel
@@ -98,7 +107,7 @@ export function ReportsContent() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {summaryCards.map((card) => {
-          const Icon = summaryIconMap[card.iconKey]
+          const Icon = summaryIconMap[card.iconKey] ?? FileText
           return (
             <SummaryCard
               key={card.id}
@@ -115,13 +124,17 @@ export function ReportsContent() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <ChartContainer
           title="Lượt xem theo tháng"
-          onExport={() => handleExportExcel(EXPORT_TYPES.LUOT_XEM)}
+          onExport={() => {
+            handleExportExcel(EXPORT_TYPES.LUOT_XEM, timePeriod).catch((err) => {
+              toast.error(err instanceof Error ? err.message : "Xuất báo cáo thất bại")
+            })
+          }}
         >
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={monthlyData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#D5D0C4" />
               <XAxis
-                dataKey="month"
+                dataKey="label"
                 tick={{ fontSize: 12, fill: "#5C5C5C" }}
                 axisLine={{ stroke: "#D5D0C4" }}
               />
@@ -151,7 +164,11 @@ export function ReportsContent() {
 
         <ChartContainer
           title="Hoạt động theo vai trò"
-          onExport={() => handleExportExcel(EXPORT_TYPES.HOAT_DONG)}
+          onExport={() => {
+            handleExportExcel(EXPORT_TYPES.HOAT_DONG, timePeriod).catch((err) => {
+              toast.error(err instanceof Error ? err.message : "Xuất báo cáo thất bại")
+            })
+          }}
         >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={userActivityData} layout="vertical">
@@ -183,13 +200,17 @@ export function ReportsContent() {
 
         <ChartContainer
           title="Lượt đăng nhập theo tháng"
-          onExport={() => handleExportExcel(EXPORT_TYPES.DANG_NHAP)}
+          onExport={() => {
+            handleExportExcel(EXPORT_TYPES.DANG_NHAP, timePeriod).catch((err) => {
+              toast.error(err instanceof Error ? err.message : "Xuất báo cáo thất bại")
+            })
+          }}
         >
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={monthlyData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#D5D0C4" />
               <XAxis
-                dataKey="month"
+                dataKey="label"
                 tick={{ fontSize: 12, fill: "#5C5C5C" }}
                 axisLine={{ stroke: "#D5D0C4" }}
               />
@@ -218,7 +239,11 @@ export function ReportsContent() {
 
         <ChartContainer
           title="Nội dung được xem nhiều nhất"
-          onExport={() => handleExportExcel(EXPORT_TYPES.NOI_DUNG)}
+          onExport={() => {
+            handleExportExcel(EXPORT_TYPES.NOI_DUNG, timePeriod).catch((err) => {
+              toast.error(err instanceof Error ? err.message : "Xuất báo cáo thất bại")
+            })
+          }}
         >
           <div className="divide-y divide-border">
             {topContentData.map((item, index) => (
@@ -267,22 +292,38 @@ export function ReportsContent() {
           <ExportOption
             title="Báo cáo tổng hợp"
             description="Tất cả dữ liệu thống kê"
-            onClick={() => handleExportExcel(EXPORT_TYPES.TONG_HOP)}
+            onClick={() => {
+              handleExportExcel(EXPORT_TYPES.TONG_HOP, timePeriod).catch((err) => {
+                toast.error(err instanceof Error ? err.message : "Xuất báo cáo thất bại")
+              })
+            }}
           />
           <ExportOption
             title="Báo cáo người dùng"
             description="Danh sách và hoạt động"
-            onClick={() => handleExportExcel(EXPORT_TYPES.NGUOI_DUNG)}
+            onClick={() => {
+              handleExportExcel(EXPORT_TYPES.NGUOI_DUNG, timePeriod).catch((err) => {
+                toast.error(err instanceof Error ? err.message : "Xuất báo cáo thất bại")
+              })
+            }}
           />
           <ExportOption
             title="Báo cáo nội dung"
             description="Bài viết và lượt xem"
-            onClick={() => handleExportExcel(EXPORT_TYPES.NOI_DUNG_CHI_TIET)}
+            onClick={() => {
+              handleExportExcel(EXPORT_TYPES.NOI_DUNG_CHI_TIET, timePeriod).catch((err) => {
+                toast.error(err instanceof Error ? err.message : "Xuất báo cáo thất bại")
+              })
+            }}
           />
           <ExportOption
             title="Nhật ký hệ thống"
             description="Log đăng nhập và thao tác"
-            onClick={() => handleExportExcel(EXPORT_TYPES.NHAT_KY)}
+            onClick={() => {
+              handleExportExcel(EXPORT_TYPES.NHAT_KY, timePeriod).catch((err) => {
+                toast.error(err instanceof Error ? err.message : "Xuất báo cáo thất bại")
+              })
+            }}
           />
         </div>
       </div>

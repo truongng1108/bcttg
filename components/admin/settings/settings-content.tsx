@@ -45,18 +45,25 @@ import { SettingsService } from "@/lib/services/settings.service"
 import { AdminStatsGrid, type AdminStatsItem } from "@/components/admin/shared/admin-stats-grid"
 import { DEFAULT_PASSWORD_MIN_LENGTH } from "@/lib/constants/settings-defaults"
 import { toast } from "sonner"
+import type { SettingsBackupItem } from "@/lib/types/api"
+import { formatDateDetail } from "@/lib/utils/date"
 
 export function SettingsContent() {
   const [systemVersion, setSystemVersion] = useState("")
   const [systemStatusCards, setSystemStatusCards] = useState<SettingsStatusCard[]>([])
   const [isSaveLoading, setIsSaveLoading] = useState(false)
   const [isResetLoading, setIsResetLoading] = useState(false)
+  const [isTestEmailLoading, setIsTestEmailLoading] = useState(false)
+  const [isClearCacheLoading, setIsClearCacheLoading] = useState(false)
+  const [backups, setBackups] = useState<SettingsBackupItem[]>([])
+  const [isBackupsLoading, setIsBackupsLoading] = useState(false)
+  const [activeBackupActionId, setActiveBackupActionId] = useState<string | null>(null)
   const form = useForm<SettingsFormData>({
     resolver: zodResolver(SettingsFormSchema),
     defaultValues: {
       systemName: "",
       systemDescription: "",
-      timezone: "asia-ho_chi_minh",
+      timezone: "Asia/Ho_Chi_Minh",
       language: "vi",
       recordsPerPage: "20",
       showAvatar: false,
@@ -103,8 +110,23 @@ export function SettingsContent() {
       })
   }
 
+  const loadBackups = () => {
+    setIsBackupsLoading(true)
+    SettingsService.getBackups()
+      .then((items) => {
+        setBackups(items)
+      })
+      .catch((err) => {
+        toast.error(err instanceof Error ? err.message : "Không tải được danh sách backup")
+      })
+      .finally(() => {
+        setIsBackupsLoading(false)
+      })
+  }
+
   useEffect(() => {
     loadSettings()
+    loadBackups()
   }, [])
 
   const handleSave = async (values: SettingsFormData) => {
@@ -134,6 +156,85 @@ export function SettingsContent() {
       setIsResetLoading(false)
     }
   }
+
+  const formatBackupSize = (sizeBytes: number) => {
+    if (sizeBytes < 1024) return `${sizeBytes} B`
+    if (sizeBytes < 1024 * 1024) return `${(sizeBytes / 1024).toFixed(1)} KB`
+    if (sizeBytes < 1024 * 1024 * 1024) return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`
+    return `${(sizeBytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+  }
+
+  const handleTestEmail = async () => {
+    const emailTo = globalThis.window?.prompt("Nhập email nhận mail thử", form.getValues("emailFrom"))
+    if (!emailTo) return
+    setIsTestEmailLoading(true)
+    try {
+      const response = await SettingsService.testEmail({
+        to: emailTo,
+        subject: "Kiem tra SMTP",
+        body: "Noi dung email thu",
+      })
+      toast.success(response.message)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gửi email thử thất bại")
+    } finally {
+      setIsTestEmailLoading(false)
+    }
+  }
+
+  const handleDownloadBackup = async (id: string, fileName: string) => {
+    setActiveBackupActionId(`download-${id}`)
+    try {
+      const response = await SettingsService.downloadBackup(id)
+      const url = URL.createObjectURL(response.blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = response.filename ?? fileName
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      toast.success("Đã tải file backup")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Tải backup thất bại")
+    } finally {
+      setActiveBackupActionId(null)
+    }
+  }
+
+  const handleRestoreBackup = async (id: string, fileName: string) => {
+    if (!globalThis.window?.confirm(`Khôi phục backup ${fileName}?`)) return
+    setActiveBackupActionId(`restore-${id}`)
+    try {
+      await SettingsService.restoreBackup(id)
+      toast.success("Đã khôi phục backup")
+      loadBackups()
+      loadSettings()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Khôi phục backup thất bại")
+    } finally {
+      setActiveBackupActionId(null)
+    }
+  }
+
+  const handleClearCache = async () => {
+    if (!globalThis.window?.confirm("Xóa toàn bộ cache runtime?")) return
+    setIsClearCacheLoading(true)
+    try {
+      await SettingsService.clearCache()
+      toast.success("Đã xóa cache")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Xóa cache thất bại")
+    } finally {
+      setIsClearCacheLoading(false)
+    }
+  }
+
+  const backupContent = isBackupsLoading
+    ? (
+      <p className="text-sm text-muted-foreground">Đang tải danh sách backup...</p>
+    )
+    : null
 
   const statusIconMap = {
     server: Server,
@@ -267,8 +368,8 @@ export function SettingsContent() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="asia-ho_chi_minh">Asia/Ho_Chi_Minh (GMT+7)</SelectItem>
-                      <SelectItem value="utc">UTC (GMT+0)</SelectItem>
+                      <SelectItem value="Asia/Ho_Chi_Minh">Asia/Ho_Chi_Minh (GMT+7)</SelectItem>
+                      <SelectItem value="UTC">UTC (GMT+0)</SelectItem>
                     </SelectContent>
                       </Select>
                     )}
@@ -590,9 +691,14 @@ export function SettingsContent() {
                   )}
                 />
               </div>
-              <Button variant="outline" className="border-primary/30 text-primary bg-transparent">
+              <Button
+                variant="outline"
+                className="border-primary/30 text-primary bg-transparent"
+                disabled={isTestEmailLoading}
+                onClick={handleTestEmail}
+              >
                 <Mail className="mr-2 h-4 w-4" />
-                Gửi email thử nghiệm
+                {isTestEmailLoading ? "Đang gửi..." : "Gửi email thử nghiệm"}
               </Button>
             </CardContent>
           </Card>
@@ -740,30 +846,42 @@ export function SettingsContent() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {[
-                  { date: "27/01/2026 02:00", size: "2.3 GB", status: "success" },
-                  { date: "26/01/2026 02:00", size: "2.2 GB", status: "success" },
-                  { date: "25/01/2026 02:00", size: "2.2 GB", status: "success" },
-                  { date: "24/01/2026 02:00", size: "2.1 GB", status: "success" },
-                ].map((backup) => (
-                  <div key={backup.date} className="flex items-center justify-between rounded-md border border-border p-3">
+                {backupContent}
+                {!isBackupsLoading && backups.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Chưa có file backup</p>
+                ) : null}
+                {!isBackupsLoading && backups.length > 0 ? backups.map((backup) => (
+                  <div key={backup.id} className="flex items-center justify-between rounded-md border border-border p-3">
                     <div className="flex items-center gap-3">
                       <CheckCircle className="h-5 w-5 text-[#2E7D32]" />
                       <div>
-                        <p className="font-medium">{backup.date}</p>
-                        <p className="text-sm text-muted-foreground">Kích thước: {backup.size}</p>
+                        <p className="font-medium">{backup.fileName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatDateDetail(backup.modifiedAt)} - Kích thước: {formatBackupSize(backup.sizeBytes)}
+                        </p>
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={activeBackupActionId !== null}
+                        onClick={() => handleDownloadBackup(backup.id, backup.fileName)}
+                      >
                         Tải xuống
                       </Button>
-                      <Button variant="outline" size="sm" className="text-primary hover:bg-primary/10 bg-transparent">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-primary hover:bg-primary/10 bg-transparent"
+                        disabled={activeBackupActionId !== null || !backup.restorable}
+                        onClick={() => handleRestoreBackup(backup.id, backup.fileName)}
+                      >
                         Khôi phục
                       </Button>
                     </div>
                   </div>
-                ))}
+                )) : null}
               </div>
             </CardContent>
           </Card>
@@ -779,8 +897,13 @@ export function SettingsContent() {
                   <p className="font-medium">Xóa tất cả dữ liệu cache</p>
                   <p className="text-sm text-muted-foreground">Xóa toàn bộ dữ liệu tạm thời của hệ thống</p>
                 </div>
-                <Button variant="outline" className="border-destructive text-destructive hover:bg-destructive/10 bg-transparent">
-                  Xóa cache
+                <Button
+                  variant="outline"
+                  className="border-destructive text-destructive hover:bg-destructive/10 bg-transparent"
+                  disabled={isClearCacheLoading}
+                  onClick={handleClearCache}
+                >
+                  {isClearCacheLoading ? "Đang xóa..." : "Xóa cache"}
                 </Button>
               </div>
               <Separator />

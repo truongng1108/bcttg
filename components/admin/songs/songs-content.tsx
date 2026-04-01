@@ -42,6 +42,7 @@ import {
 import { SortableList } from "@/components/admin/shared/sortable/sortable-list"
 import { SortableCard } from "@/components/admin/shared/sortable/sortable-card"
 import { STATUS_FILTER_OPTIONS } from "@/lib/constants/status-options"
+import { getMediaUrl } from "@/lib/utils/media"
 
 export function SongsContent() {
   const router = useRouter()
@@ -51,6 +52,7 @@ export function SongsContent() {
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
   const [playingId, setPlayingId] = useState<number | null>(null)
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(20)
   const [totalPages, setTotalPages] = useState(1)
@@ -156,9 +158,55 @@ export function SongsContent() {
     return category?.name || "Chưa phân loại"
   }
 
-  const togglePlay = (id: number) => {
-    setPlayingId(playingId === id ? null : id)
+  const getSongAudioUrl = (song: Song): string | null => {
+    if (song.audioUrl) return song.audioUrl
+    return getMediaUrl(song.audioMedia ?? null)
   }
+
+  const togglePlay = (id: number) => {
+    const song = songs.find((item) => item.id === id)
+    if (!song) return
+    const audioUrl = getSongAudioUrl(song)
+    if (!audioUrl) {
+      toast.error("Ca khúc chưa có file âm thanh")
+      return
+    }
+    if (playingId === id && currentAudio) {
+      currentAudio.pause()
+      setPlayingId(null)
+      setCurrentAudio(null)
+      return
+    }
+    if (currentAudio) {
+      currentAudio.pause()
+    }
+    const audio = new Audio(audioUrl)
+    audio.addEventListener("ended", () => {
+      setPlayingId(null)
+      setCurrentAudio(null)
+    })
+    audio.addEventListener("error", () => {
+      setPlayingId(null)
+      setCurrentAudio(null)
+      toast.error("Không thể phát âm thanh")
+    })
+    audio.play().then(() => {
+      setPlayingId(id)
+      setCurrentAudio(audio)
+    }).catch(() => {
+      toast.error("Không thể phát âm thanh")
+      setPlayingId(null)
+      setCurrentAudio(null)
+    })
+  }
+
+  useEffect(() => {
+    return () => {
+      if (currentAudio) {
+        currentAudio.pause()
+      }
+    }
+  }, [currentAudio])
 
   const handleEdit = (song: Song) => {
     setSelectedSong(song)
@@ -624,7 +672,7 @@ export function SongsContent() {
               category: { value: String(song.categoryId), label: getCategoryName(song.categoryId) },
               status: song.isVisible ? "active" : "hidden",
               plays: 0,
-              hasAudio: Boolean(song.audioMediaId || song.audioUrl),
+              hasAudio: Boolean(song.audioMediaId || song.audioUrl || song.audioMedia),
               hasLyrics: Boolean(song.lyric),
             })) as import("@/lib/data/types").Song[]}
             startIndex={(currentPage - 1) * pageSize}

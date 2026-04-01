@@ -50,30 +50,39 @@ import { actionIcons } from "@/lib/constants/actions"
 import { levelStyles } from "@/lib/constants/status"
 import { AdminStatsGrid, type AdminStatsItem } from "@/components/admin/shared/admin-stats-grid"
 import { AdminSection } from "@/components/admin/shared/admin-section"
+import type { LogsPeriod, LogsSummaryResponse, PaginationMeta } from "@/lib/types/api"
+import { toast } from "sonner"
 
 export function SystemLogsContent() {
+  const [activeTab, setActiveTab] = useState<"login" | "system">("login")
   const [loginLogs, setLoginLogs] = useState<LoginLog[]>([])
   const [systemLogs, setSystemLogs] = useState<SystemLog[]>([])
-
-  useEffect(() => {
-    Promise.all([
-      LogsService.getLoginLogs(),
-      LogsService.getSystemLogs(),
-    ]).then(([loginData, systemData]) => {
-      setLoginLogs(loginData)
-      setSystemLogs(systemData)
-    })
-  }, [])
+  const [summary, setSummary] = useState<LogsSummaryResponse | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
-  const [dateFilter, setDateFilter] = useState("today")
+  const [systemSearchQuery, setSystemSearchQuery] = useState("")
+  const [dateFilter, setDateFilter] = useState("month")
+  const [systemDateFilter, setSystemDateFilter] = useState("month")
   const [levelFilter, setLevelFilter] = useState("all")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize] = useState(10)
+  const [loginPage, setLoginPage] = useState(1)
+  const [systemPage, setSystemPage] = useState(1)
+  const pageSize = 10
+  const [loginMeta, setLoginMeta] = useState<PaginationMeta>({
+    page: 1,
+    page_size: pageSize,
+    total_elements: 0,
+    total_pages: 1,
+  })
+  const [systemMeta, setSystemMeta] = useState<PaginationMeta>({
+    page: 1,
+    page_size: pageSize,
+    total_elements: 0,
+    total_pages: 1,
+  })
 
-  const todayLogins = loginLogs.filter(l => l.status === "success").length
-  const failedLogins = loginLogs.filter(l => l.status === "failed").length
-  const totalActions = systemLogs.length
-  const errorCount = systemLogs.filter(l => l.level === "error").length
+  const todayLogins = summary?.successfulLogins ?? loginLogs.filter((l) => l.status === "success").length
+  const failedLogins = summary?.failedLogins ?? loginLogs.filter((l) => l.status === "failed").length
+  const totalActions = summary?.totalActions ?? systemLogs.length
+  const errorCount = summary?.errorCount ?? systemLogs.filter((l) => l.level === "error").length
 
   const statsItems: AdminStatsItem[] = [
     {
@@ -106,6 +115,82 @@ export function SystemLogsContent() {
     },
   ]
 
+  const mapPeriod = (value: string): LogsPeriod | undefined => {
+    if (value === "week" || value === "month") return value
+    return undefined
+  }
+
+  const mapLevel = (value: string): "info" | "warning" | "error" | undefined => {
+    if (value === "info" || value === "warning" || value === "error") return value
+    return undefined
+  }
+
+  useEffect(() => {
+    LogsService.getSummary()
+      .then((data) => {
+        setSummary(data)
+      })
+      .catch(() => {
+        setSummary(null)
+      })
+  }, [])
+
+  useEffect(() => {
+    LogsService.getLoginLogs({
+      page: loginPage,
+      page_size: pageSize,
+      q: searchQuery || undefined,
+      period: mapPeriod(dateFilter),
+    })
+      .then((result) => {
+        setLoginLogs(result.items)
+        setLoginMeta(result.meta)
+      })
+      .catch((err) => {
+        toast.error(err instanceof Error ? err.message : "Không tải được nhật ký đăng nhập")
+      })
+  }, [searchQuery, dateFilter, loginPage])
+
+  useEffect(() => {
+    LogsService.getSystemLogs({
+      page: systemPage,
+      page_size: pageSize,
+      q: systemSearchQuery || undefined,
+      level: mapLevel(levelFilter),
+      period: mapPeriod(systemDateFilter),
+    })
+      .then((result) => {
+        setSystemLogs(result.items)
+        setSystemMeta(result.meta)
+      })
+      .catch((err) => {
+        toast.error(err instanceof Error ? err.message : "Không tải được nhật ký hệ thống")
+      })
+  }, [systemSearchQuery, levelFilter, systemDateFilter, systemPage])
+
+  const handleExportLogs = () => {
+    LogsService.exportLogs({
+      type: activeTab,
+      format: "xlsx",
+      q: activeTab === "login" ? (searchQuery || undefined) : (systemSearchQuery || undefined),
+      level: activeTab === "system" ? mapLevel(levelFilter) : undefined,
+      period: activeTab === "login" ? mapPeriod(dateFilter) : mapPeriod(systemDateFilter),
+    })
+      .then((result) => {
+        const url = URL.createObjectURL(result.blob)
+        const link = document.createElement("a")
+        link.href = url
+        link.download = result.filename ?? `nhat-ky-${activeTab}.xlsx`
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        URL.revokeObjectURL(url)
+      })
+      .catch((err) => {
+        toast.error(err instanceof Error ? err.message : "Xuất nhật ký thất bại")
+      })
+  }
+
   return (
     <AdminSection
       header={
@@ -114,7 +199,11 @@ export function SystemLogsContent() {
           title="Nhật Ký Hệ Thống"
           description="Theo dõi hoạt động đăng nhập và thao tác trên hệ thống"
           actions={
-            <Button variant="outline" className="border-primary/30 text-primary hover:bg-primary/10 bg-transparent">
+            <Button
+              variant="outline"
+              className="border-primary/30 text-primary hover:bg-primary/10 bg-transparent"
+              onClick={handleExportLogs}
+            >
               <Download className="mr-2 h-4 w-4" />
               Xuất nhật ký
             </Button>
@@ -124,7 +213,11 @@ export function SystemLogsContent() {
     >
       <AdminStatsGrid items={statsItems} columns={4} />
 
-      <Tabs defaultValue="login" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={(value) => {
+        if (value === "login" || value === "system") {
+          setActiveTab(value)
+        }
+      }} className="space-y-4">
         <TabsList className="bg-muted">
           <TabsTrigger value="login" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <LogIn className="mr-2 h-4 w-4" />
@@ -146,17 +239,22 @@ export function SystemLogsContent() {
                 <Input
                   placeholder="Tìm kiếm theo tên, đơn vị, IP..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value)
+                    setLoginPage(1)
+                  }}
                   className="pl-10"
                 />
               </div>
-              <Select value={dateFilter} onValueChange={setDateFilter}>
+              <Select value={dateFilter} onValueChange={(value) => {
+                setDateFilter(value)
+                setLoginPage(1)
+              }}>
                 <SelectTrigger className="w-40">
                   <Clock className="mr-2 h-4 w-4" />
                   <SelectValue placeholder="Thời gian" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="today">Hôm nay</SelectItem>
                   <SelectItem value="week">7 ngày qua</SelectItem>
                   <SelectItem value="month">30 ngày qua</SelectItem>
                   <SelectItem value="all">Tất cả</SelectItem>
@@ -186,7 +284,7 @@ export function SystemLogsContent() {
                   return (
                     <TableRow key={log.id} className="hover:bg-muted/30">
                       <TableCell className="font-medium text-muted-foreground">
-                        {index + 1}
+                        {(loginMeta.page - 1) * loginMeta.page_size + index + 1}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -238,10 +336,18 @@ export function SystemLogsContent() {
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Tìm kiếm nhật ký..."
+                  value={systemSearchQuery}
+                  onChange={(e) => {
+                    setSystemSearchQuery(e.target.value)
+                    setSystemPage(1)
+                  }}
                   className="pl-10"
                 />
               </div>
-              <Select value={levelFilter} onValueChange={setLevelFilter}>
+              <Select value={levelFilter} onValueChange={(value) => {
+                setLevelFilter(value)
+                setSystemPage(1)
+              }}>
                 <SelectTrigger className="w-40">
                   <Filter className="mr-2 h-4 w-4" />
                   <SelectValue placeholder="Mức độ" />
@@ -253,13 +359,15 @@ export function SystemLogsContent() {
                   <SelectItem value="error">Lỗi</SelectItem>
                 </SelectContent>
               </Select>
-              <Select defaultValue="today">
+              <Select value={systemDateFilter} onValueChange={(value) => {
+                setSystemDateFilter(value)
+                setSystemPage(1)
+              }}>
                 <SelectTrigger className="w-40">
                   <Clock className="mr-2 h-4 w-4" />
                   <SelectValue placeholder="Thời gian" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="today">Hôm nay</SelectItem>
                   <SelectItem value="week">7 ngày qua</SelectItem>
                   <SelectItem value="month">30 ngày qua</SelectItem>
                 </SelectContent>
@@ -292,7 +400,7 @@ export function SystemLogsContent() {
                   return (
                     <TableRow key={log.id} className="hover:bg-muted/30">
                       <TableCell className="font-medium text-muted-foreground">
-                        {index + 1}
+                        {(systemMeta.page - 1) * systemMeta.page_size + index + 1}
                       </TableCell>
                       <TableCell>
                         <Badge 
@@ -328,11 +436,17 @@ export function SystemLogsContent() {
       </Tabs>
 
       <AdminPagination
-        currentPage={currentPage}
-        totalPages={Math.ceil(loginLogs.length / pageSize)}
-        totalItems={loginLogs.length}
+        currentPage={activeTab === "login" ? loginMeta.page : systemMeta.page}
+        totalPages={activeTab === "login" ? loginMeta.total_pages : systemMeta.total_pages}
+        totalItems={activeTab === "login" ? loginMeta.total_elements : systemMeta.total_elements}
         pageSize={pageSize}
-        onPageChange={setCurrentPage}
+        onPageChange={(page) => {
+          if (activeTab === "login") {
+            setLoginPage(page)
+            return
+          }
+          setSystemPage(page)
+        }}
       />
     </AdminSection>
   )

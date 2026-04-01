@@ -1,18 +1,18 @@
 import type { MonthlyData, ReportsSummaryCard, TopContentData, UserActivityData } from "../types"
 
 export const monthlyData: MonthlyData[] = [
-  { month: "T1", views: 4500, edits: 120, logins: 850 },
-  { month: "T2", views: 5200, edits: 145, logins: 920 },
-  { month: "T3", views: 4800, edits: 132, logins: 880 },
-  { month: "T4", views: 6100, edits: 167, logins: 1050 },
-  { month: "T5", views: 5500, edits: 156, logins: 980 },
-  { month: "T6", views: 6700, edits: 189, logins: 1120 },
-  { month: "T7", views: 7200, edits: 201, logins: 1200 },
-  { month: "T8", views: 5800, edits: 145, logins: 950 },
-  { month: "T9", views: 6400, edits: 178, logins: 1080 },
-  { month: "T10", views: 7800, edits: 212, logins: 1350 },
-  { month: "T11", views: 8200, edits: 234, logins: 1420 },
-  { month: "T12", views: 9100, edits: 256, logins: 1580 },
+  { label: "T1", views: 4500, edits: 120, logins: 850 },
+  { label: "T2", views: 5200, edits: 145, logins: 920 },
+  { label: "T3", views: 4800, edits: 132, logins: 880 },
+  { label: "T4", views: 6100, edits: 167, logins: 1050 },
+  { label: "T5", views: 5500, edits: 156, logins: 980 },
+  { label: "T6", views: 6700, edits: 189, logins: 1120 },
+  { label: "T7", views: 7200, edits: 201, logins: 1200 },
+  { label: "T8", views: 5800, edits: 145, logins: 950 },
+  { label: "T9", views: 6400, edits: 178, logins: 1080 },
+  { label: "T10", views: 7800, edits: 212, logins: 1350 },
+  { label: "T11", views: 8200, edits: 234, logins: 1420 },
+  { label: "T12", views: 9100, edits: 256, logins: 1580 },
 ]
 
 export const userActivityData: UserActivityData[] = [
