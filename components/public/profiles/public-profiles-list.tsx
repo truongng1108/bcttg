@@ -15,21 +15,13 @@ import {
 } from "@/components/ui/select"
 import { DataProfilesService } from "@/lib/services/data-profiles.service"
 import type { DataProfile } from "@/lib/types/api"
+import { isProfileType, PROFILE_TYPE_OPTIONS, type ProfileType } from "@/lib/constants/profile-types"
 import { toast } from "sonner"
 import { StatusPage } from "@/components/shared/status-page"
-
-type ProfileType = "THU_TRUONG" | "CHIEN_SI" | "ANH_HUNG"
 
 interface PublicProfilesListProps {
   readonly presetType: ProfileType | null
 }
-
-const profileTypeOptions = [
-  { value: "all", label: "Tất cả" },
-  { value: "THU_TRUONG", label: "Thủ trưởng" },
-  { value: "CHIEN_SI", label: "Chiến sĩ" },
-  { value: "ANH_HUNG", label: "Anh hùng" },
-]
 
 export function PublicProfilesList({ presetType }: PublicProfilesListProps) {
   const router = useRouter()
@@ -58,8 +50,8 @@ export function PublicProfilesList({ presetType }: PublicProfilesListProps) {
         if (searchQuery) {
           params.q = searchQuery
         }
-        if (profileTypeFilter !== "all") {
-          params.profileType = profileTypeFilter as ProfileType
+        if (isProfileType(profileTypeFilter)) {
+          params.profileType = profileTypeFilter
         }
         const response = await DataProfilesService.getAllPublic(params)
         setProfiles(response.data)
@@ -226,7 +218,7 @@ export function PublicProfilesList({ presetType }: PublicProfilesListProps) {
               <SelectValue placeholder="Loại hồ sơ" />
             </SelectTrigger>
             <SelectContent>
-              {profileTypeOptions.map((option, index) => (
+              {PROFILE_TYPE_OPTIONS.map((option, index) => (
                 <SelectItem key={`${option.value}-${index}`} value={option.value}>
                   {option.label}
                 </SelectItem>

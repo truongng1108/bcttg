@@ -18,11 +18,10 @@ import type { ContentCategory, ContentItem } from "@/lib/types/api"
 import { toast } from "sonner"
 import { StatusPage } from "@/components/shared/status-page"
 import { PublicListShell } from "@/components/public/shared/public-list-shell"
-
-type ContentPresetType = "TRUYEN_THONG" | "NET_TIEU_BIEU" | null
+import { CONTENT_TYPE_LABELS, type CMSPresetType } from "@/lib/constants/content-types"
 
 interface PublicContentListProps {
-  readonly presetType: ContentPresetType
+  readonly presetType: CMSPresetType | null
 }
 
 export function PublicContentList({ presetType }: PublicContentListProps) {
@@ -85,6 +84,11 @@ export function PublicContentList({ presetType }: PublicContentListProps) {
     return [...options, ...mapped]
   }, [categories])
 
+  const listTitle = presetType ? CONTENT_TYPE_LABELS[presetType] : "Tất cả nội dung"
+  const listDescription = presetType
+    ? `Danh sách bài viết công khai thuộc nhóm ${CONTENT_TYPE_LABELS[presetType]}`
+    : "Danh sách bài viết công khai"
+
   if (error && !isLoading) {
     return (
       <StatusPage
@@ -99,8 +103,8 @@ export function PublicContentList({ presetType }: PublicContentListProps) {
 
   return (
     <PublicListShell
-      title="CMS Nội dung"
-      description="Danh sách bài viết công khai"
+      title={listTitle}
+      description={listDescription}
       isLoading={isLoading}
       currentPage={currentPage}
       totalPages={totalPages}

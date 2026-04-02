@@ -12,6 +12,7 @@ import { AdminLoadingState } from "@/components/admin/shared/admin-loading-state
 import { DetailSection } from "@/components/admin/shared/detail-section"
 import { DetailRow } from "@/components/admin/shared/detail-row"
 import { ContentCategoriesService } from "@/lib/services/content-categories.service"
+import { CONTENT_TYPE_LABELS, isContentType } from "@/lib/constants/content-types"
 import type { ContentCategory } from "@/lib/types/api"
 import { toast } from "sonner"
 import { formatDateDetail } from "@/lib/utils/date"
@@ -79,7 +80,7 @@ export function CategoryDetail({ open, onOpenChange, categoryId }: CategoryDetai
               <DetailRow label="Slug" value={category.slug} copyable />
               <DetailRow
                 label="Loại"
-                value={category.type === "TRUYEN_THONG" ? "Truyền thống" : "Nét tiêu biểu"}
+                value={isContentType(category.type) ? CONTENT_TYPE_LABELS[category.type] : category.type}
               />
               <DetailRow
                 label="Danh mục cha"

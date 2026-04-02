@@ -19,32 +19,43 @@ import {
   type ContentCategoryFormData,
 } from "@/lib/schemas/content-category.schema"
 import type { ContentCategory } from "@/lib/types/api"
-import { CONTENT_TYPE_OPTIONS } from "@/lib/constants/content-types"
+import { CONTENT_TYPES, CONTENT_TYPE_OPTIONS } from "@/lib/constants/content-types"
 
 interface CategoryFormProps {
   readonly open: boolean
   readonly onOpenChange: (open: boolean) => void
   readonly mode: "create" | "edit"
   readonly initialData?: ContentCategory
+  readonly defaultParentId?: number | null
   readonly parentCategories?: ContentCategory[]
   readonly onSubmit: (data: ContentCategoryFormData) => Promise<void>
   readonly isMutating?: boolean
 }
+
+const NO_PARENT_CATEGORY_VALUE = "none"
 
 export function CategoryForm({
   open,
   onOpenChange,
   mode,
   initialData,
+  defaultParentId,
   parentCategories = [],
   onSubmit,
   isMutating = false,
 }: CategoryFormProps) {
+  let resolvedParentId = NO_PARENT_CATEGORY_VALUE
+  if (mode === "edit") {
+    resolvedParentId = initialData?.parentId ? String(initialData.parentId) : NO_PARENT_CATEGORY_VALUE
+  } else if (defaultParentId !== null && defaultParentId !== undefined) {
+    resolvedParentId = String(defaultParentId)
+  }
+
   const form = useForm<ContentCategoryFormInput>({
     resolver: zodResolver(ContentCategoryFormInputSchema),
     defaultValues: {
-      type: initialData?.type || "TRUYEN_THONG",
-      parentId: initialData?.parentId ? String(initialData.parentId) : "",
+      type: initialData?.type || CONTENT_TYPES.TRUYEN_THONG,
+      parentId: resolvedParentId,
       name: initialData?.name || "",
       slug: initialData?.slug || "",
       description: initialData?.description || "",
@@ -58,7 +69,7 @@ export function CategoryForm({
       if (initialData) {
         form.reset({
           type: initialData.type,
-          parentId: initialData.parentId ? String(initialData.parentId) : "",
+          parentId: resolvedParentId,
           name: initialData.name,
           slug: initialData.slug,
           description: initialData.description || "",
@@ -67,8 +78,8 @@ export function CategoryForm({
         })
       } else {
         form.reset({
-          type: "TRUYEN_THONG",
-          parentId: "",
+          type: CONTENT_TYPES.TRUYEN_THONG,
+          parentId: resolvedParentId,
           name: "",
           slug: "",
           description: "",
@@ -77,13 +88,13 @@ export function CategoryForm({
         })
       }
     }
-  }, [open, initialData, form])
+  }, [open, initialData, form, resolvedParentId])
 
   const handleSubmit = async (data: ContentCategoryFormInput) => {
     try {
       const transformed: ContentCategoryFormData = {
         ...data,
-        parentId: data.parentId === "" ? null : Number(data.parentId),
+        parentId: data.parentId === NO_PARENT_CATEGORY_VALUE ? null : Number(data.parentId),
       }
       await onSubmit(transformed)
       onOpenChange(false)
@@ -92,9 +103,9 @@ export function CategoryForm({
   }
 
   const parentOptions = [
-    { value: "", label: "Không có danh mục cha" },
+    { value: NO_PARENT_CATEGORY_VALUE, label: "Không có danh mục cha" },
     ...parentCategories
-      .filter((cat) => cat.type === form.watch("type") && (!initialData || cat.id !== initialData.id))
+      .filter((cat) => cat.type === form.watch("type") && cat.id !== initialData?.id)
       .map((cat) => ({
         value: String(cat.id),
         label: cat.name,

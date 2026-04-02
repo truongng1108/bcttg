@@ -73,11 +73,12 @@ const navItems: NavItem[] = [
   {
     id: "content",
     title: "Quản lý nội dung",
+    href: "/cms",
     icon: FileText,
     children: [
-      { id: "cms", title: "CMS Nội dung", href: "/cms", icon: FileText },
       { id: "cms-truyen-thong", title: "Truyền thống", href: "/cms/truyen-thong", icon: Shield },
       { id: "cms-net-tieu-bieu", title: "Nét tiêu biểu", href: "/cms/net-tieu-bieu", icon: Star },
+      { id: "cms-so-do-lich-su", title: "Sơ đồ lịch sử", href: "/cms/so-do-lich-su", icon: FileText },
     ],
   },
   {
@@ -181,6 +182,12 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
                   href: child.href,
                   label: child.title,
                   icon: child.icon,
+                  children: child.children?.map((grandChild) => ({
+                    id: grandChild.id,
+                    href: grandChild.href,
+                    label: grandChild.title,
+                    icon: grandChild.icon,
+                  })),
                 })),
               }}
               collapsed={collapsed}

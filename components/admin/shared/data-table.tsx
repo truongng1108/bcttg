@@ -55,6 +55,7 @@ export interface DataTableProps<T> {
   readonly totalItems?: number
   readonly currentPage?: number
   readonly onPageChange?: (page: number) => void
+  readonly serverPagination?: boolean
   readonly onSort?: (key: string, direction: "asc" | "desc") => void
 }
 
@@ -71,6 +72,7 @@ export function DataTable<T extends { id: string | number }>({
   totalItems,
   currentPage = 1,
   onPageChange,
+  serverPagination = false,
   onSort,
 }: DataTableProps<T>) {
   const [searchValue, setSearchValue] = useState("")
@@ -80,12 +82,20 @@ export function DataTable<T extends { id: string | number }>({
   const [localFilterValues, setLocalFilterValues] = useState<DataTableFilterValues>({})
 
   const total = totalItems ?? data.length
-  const totalPages = Math.ceil(total / pageSize)
-  const startItem = (currentPage - 1) * pageSize + 1
-  const endItem = Math.min(currentPage * pageSize, total)
-  const startIndex = (currentPage - 1) * pageSize
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const safeCurrentPage = Math.min(Math.max(currentPage, 1), totalPages)
+  const startItem = total === 0 ? 0 : (safeCurrentPage - 1) * pageSize + 1
+  let endItem = 0
+  if (total > 0) {
+    if (serverPagination) {
+      endItem = Math.min((safeCurrentPage - 1) * pageSize + data.length, total)
+    } else {
+      endItem = Math.min(safeCurrentPage * pageSize, total)
+    }
+  }
+  const startIndex = (safeCurrentPage - 1) * pageSize
   const endIndex = startIndex + pageSize
-  const displayData = data.slice(startIndex, endIndex)
+  const displayData = serverPagination ? data : data.slice(startIndex, endIndex)
   const effectiveFilterValues = filterValues ?? localFilterValues
 
   const handleSearch = (value: string) => {
@@ -289,7 +299,7 @@ export function DataTable<T extends { id: string | number }>({
             size="icon"
             className="h-8 w-8 bg-transparent"
             onClick={() => onPageChange?.(1)}
-            disabled={currentPage === 1}
+            disabled={safeCurrentPage === 1}
           >
             <ChevronsLeft className="h-4 w-4" />
             <span className="sr-only">Trang đầu</span>
@@ -298,8 +308,8 @@ export function DataTable<T extends { id: string | number }>({
             variant="outline"
             size="icon"
             className="h-8 w-8 bg-transparent"
-            onClick={() => onPageChange?.(currentPage - 1)}
-            disabled={currentPage === 1}
+            onClick={() => onPageChange?.(safeCurrentPage - 1)}
+            disabled={safeCurrentPage === 1}
           >
             <ChevronLeft className="h-4 w-4" />
             <span className="sr-only">Trang trước</span>
@@ -310,17 +320,17 @@ export function DataTable<T extends { id: string | number }>({
             let pageNum: number
             if (totalPages <= 5) {
               pageNum = i + 1
-            } else if (currentPage <= 3) {
+            } else if (safeCurrentPage <= 3) {
               pageNum = i + 1
-            } else if (currentPage >= totalPages - 2) {
+            } else if (safeCurrentPage >= totalPages - 2) {
               pageNum = totalPages - 4 + i
             } else {
-              pageNum = currentPage - 2 + i
+              pageNum = safeCurrentPage - 2 + i
             }
             return (
               <Button
                 key={pageNum}
-                variant={currentPage === pageNum ? "default" : "outline"}
+                variant={safeCurrentPage === pageNum ? "default" : "outline"}
                 size="sm"
                 className="h-8 w-8"
                 onClick={() => onPageChange?.(pageNum)}
@@ -334,8 +344,8 @@ export function DataTable<T extends { id: string | number }>({
             variant="outline"
             size="icon"
             className="h-8 w-8 bg-transparent"
-            onClick={() => onPageChange?.(currentPage + 1)}
-            disabled={currentPage === totalPages}
+            onClick={() => onPageChange?.(safeCurrentPage + 1)}
+            disabled={safeCurrentPage === totalPages}
           >
             <ChevronRight className="h-4 w-4" />
             <span className="sr-only">Trang sau</span>
@@ -345,7 +355,7 @@ export function DataTable<T extends { id: string | number }>({
             size="icon"
             className="h-8 w-8 bg-transparent"
             onClick={() => onPageChange?.(totalPages)}
-            disabled={currentPage === totalPages}
+            disabled={safeCurrentPage === totalPages}
           >
             <ChevronsRight className="h-4 w-4" />
             <span className="sr-only">Trang cuối</span>

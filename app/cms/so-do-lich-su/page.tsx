@@ -6,17 +6,16 @@ import { PublicContentList } from "@/components/public/content/public-content-li
 import { HybridRoute } from "@/components/shared/hybrid/hybrid-route"
 import { CMS_PRESET_TYPES } from "@/lib/constants/content-types"
 
-export default function CMSNetTieuBieuPage() {
+export default function CMSSoDoLichSuPage() {
   return (
     <HybridRoute
-      public={<PublicContentList presetType={CMS_PRESET_TYPES.NET_TIEU_BIEU} />}
+      public={<PublicContentList presetType={CMS_PRESET_TYPES.SO_DO_LICH_SU} />}
       admin={
         <AdminLayout>
-          <CMSContent presetType={CMS_PRESET_TYPES.NET_TIEU_BIEU} />
+          <CMSContent presetType={CMS_PRESET_TYPES.SO_DO_LICH_SU} />
         </AdminLayout>
       }
     />
   )
 }
-
 

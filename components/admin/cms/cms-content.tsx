@@ -8,18 +8,25 @@ import { DataTable, type Column } from "@/components/admin/shared/data-table"
 import { StatusBadge, type StatusType } from "@/components/admin/shared/status-badge"
 import { ConfirmDialog } from "@/components/admin/shared/confirm-dialog"
 import { Switch } from "@/components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import type { SelectOption } from "@/lib/data/types"
 import type { ContentCategory, ContentItem } from "@/lib/types/api"
 import { ContentItemsService } from "@/lib/services/content-items.service"
 import { ContentCategoriesService } from "@/lib/services/content-categories.service"
+import { CMSCategoryTree } from "@/components/admin/cms/cms-category-tree"
 import { PageHeader } from "@/components/admin/shared/page-header"
 import { toast } from "sonner"
 import { AdminLoadingState } from "@/components/admin/shared/admin-loading-state"
 import { AdminSection } from "@/components/admin/shared/admin-section"
 import { AdminStatsGrid } from "@/components/admin/shared/admin-stats-grid"
-import { CategoryForm } from "./category-form"
-import { ContentForm } from "./content-form"
+import { CategoryForm } from "@/components/admin/cms/category-form"
+import { ContentForm } from "@/components/admin/cms/content-form"
 import { ContentCategoryFormData } from "@/lib/schemas/content-category.schema"
 import { ContentItemFormData } from "@/lib/schemas/content-item.schema"
 import {
@@ -33,17 +40,20 @@ import {
 import { SortableList } from "@/components/admin/shared/sortable/sortable-list"
 import { SortableCard } from "@/components/admin/shared/sortable/sortable-card"
 import { STATUS_FILTER_OPTIONS } from "@/lib/constants/status-options"
+import { CONTENT_TYPE_LABELS, CONTENT_TYPES, CONTENT_TYPE_OPTIONS, isContentType, type CMSPresetType } from "@/lib/constants/content-types"
 import type { CMSItemDisplay } from "@/lib/types/display"
 
-export function CMSContent() {
+interface CMSContentProps {
+  readonly presetType?: CMSPresetType | null
+}
+
+export function CMSContent({ presetType = null }: Readonly<CMSContentProps>) {
   const router = useRouter()
   
-  // UI State
-  const [activeTab, setActiveTab] = useState<"content" | "categories">("content")
-  
-  // Table/List State
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null)
+  const [typeFilter, setTypeFilter] = useState<CMSPresetType | null>(presetType)
+  const [statusFilter, setStatusFilter] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
-  const [filterValues, setFilterValues] = useState<Record<string, string>>({})
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(20)
   const [totalElements, setTotalElements] = useState(0)
@@ -51,11 +61,11 @@ export function CMSContent() {
   // Loading State
   const [isLoading, setIsLoading] = useState(true)
   const [isMutating, setIsMutating] = useState(false)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
   
   // Data State
   const [contentData, setContentData] = useState<CMSItemDisplay[]>([])
   const [contentCategories, setContentCategories] = useState<ContentCategory[]>([])
-  const [categoryOptions, setCategoryOptions] = useState<SelectOption[]>([])
   const [contentCategoryOptions, setContentCategoryOptions] = useState<SelectOption[]>([])
   
   // Content Item Dialogs
@@ -81,6 +91,8 @@ export function CMSContent() {
   const [categoryFormState, setCategoryFormState] = useState({
     open: false,
     selectedCategory: null as ContentCategory | null,
+    defaultParentId: null as number | null,
+    defaultType: null as ContentCategory["type"] | null,
   })
   const [categoryDeleteState, setCategoryDeleteState] = useState({
     dialogOpen: false,
@@ -91,10 +103,19 @@ export function CMSContent() {
     draft: [] as ContentCategory[],
   })
   
+  useEffect(() => {
+    setTypeFilter(presetType)
+  }, [presetType])
+
+  useEffect(() => {
+    setSelectedCategoryId(null)
+    setCurrentPage(1)
+  }, [typeFilter])
+
   // Static Options - imported from constants
 
   const loadContent = async () => {
-    setIsLoading(true)
+    setIsLoading(!hasLoadedOnce)
     try {
       const params: Record<string, string | number | boolean | null | undefined> = {
         page: currentPage,
@@ -103,11 +124,14 @@ export function CMSContent() {
       if (searchQuery) {
         params.q = searchQuery
       }
-      if (filterValues.category && filterValues.category !== "all") {
-        params.category_id = Number(filterValues.category)
+      if (selectedCategoryId !== null) {
+        params.category_id = selectedCategoryId
       }
-      if (filterValues.status && filterValues.status !== "all") {
-        params.is_visible = filterValues.status === "active"
+      if (statusFilter !== "all") {
+        params.is_visible = statusFilter === "active"
+      }
+      if (typeFilter) {
+        params.type = typeFilter
       }
       const response = await ContentItemsService.getAllAdmin(params)
       const mapped: CMSItemDisplay[] = response.data.map((item) => {
@@ -134,38 +158,17 @@ export function CMSContent() {
       toast.error("Không tải được dữ liệu CMS")
     } finally {
       setIsLoading(false)
+      setHasLoadedOnce(true)
     }
   }
 
   useEffect(() => {
     loadContent()
-  }, [currentPage, searchQuery, filterValues])
+  }, [currentPage, searchQuery, statusFilter, selectedCategoryId, typeFilter, contentCategories])
 
   useEffect(() => {
-    ContentCategoriesService.getAllAdmin({ page_size: 100 })
-      .then((response) => {
-        setContentCategories(response.data)
-        const filterOptions: SelectOption[] = [
-          { value: "all", label: "Tất cả" },
-          ...response.data.map((cat) => ({
-            value: String(cat.id),
-            label: cat.name,
-          })),
-        ]
-        setCategoryOptions(filterOptions)
-
-        const childCategoryOptions: SelectOption[] = response.data
-          .filter((cat) => !!cat.parentId)
-          .map((cat) => ({
-            value: String(cat.id),
-            label: cat.name,
-          }))
-        setContentCategoryOptions(childCategoryOptions)
-      })
-      .catch(() => {
-        toast.error("Không tải được danh mục")
-      })
-  }, [])
+    loadCategories()
+  }, [typeFilter])
 
   const handleToggleVisibility = async (item: CMSItemDisplay) => {
     if (isMutating) return
@@ -309,11 +312,6 @@ export function CMSContent() {
 
   const filters = [
     {
-      key: "category",
-      label: "Danh mục",
-      options: categoryOptions,
-    },
-    {
       key: "status",
       label: "Trạng thái",
       options: STATUS_FILTER_OPTIONS,
@@ -334,17 +332,11 @@ export function CMSContent() {
 
   const loadCategories = async () => {
     try {
-      const response = await ContentCategoriesService.getAllAdmin({ page_size: 100 })
+      const response = await ContentCategoriesService.getAllAdmin({
+        page_size: 500,
+        type: typeFilter || undefined,
+      })
       setContentCategories(response.data)
-      const filterOptions: SelectOption[] = [
-        { value: "all", label: "Tất cả" },
-        ...response.data.map((cat) => ({
-          value: String(cat.id),
-          label: cat.name,
-        })),
-      ]
-      setCategoryOptions(filterOptions)
-
       const childCategoryOptions: SelectOption[] = response.data
         .filter((cat) => !!cat.parentId)
         .map((cat) => ({
@@ -361,15 +353,16 @@ export function CMSContent() {
     if (isMutating) return
     setIsMutating(true)
     try {
+      const submitData = typeFilter ? { ...data, type: typeFilter } : data
       if (categoryFormState.selectedCategory) {
-        await ContentCategoriesService.update(categoryFormState.selectedCategory.id, data)
+        await ContentCategoriesService.update(categoryFormState.selectedCategory.id, submitData)
         toast.success("Đã cập nhật danh mục")
       } else {
-        await ContentCategoriesService.create(data)
+        await ContentCategoriesService.create(submitData)
         toast.success("Đã thêm danh mục")
       }
       await loadCategories()
-      setCategoryFormState({ open: false, selectedCategory: null })
+      setCategoryFormState({ open: false, selectedCategory: null, defaultParentId: null, defaultType: null })
     } catch {
       toast.error(categoryFormState.selectedCategory ? "Cập nhật danh mục thất bại" : "Thêm danh mục thất bại")
     } finally {
@@ -380,6 +373,13 @@ export function CMSContent() {
   const handleCategoryDelete = async () => {
     if (!categoryDeleteState.selectedCategory) return
     if (isMutating) return
+    const category = categoryDeleteState.selectedCategory
+    const hasChildren = contentCategories.some((c) => c.parentId !== null && c.parentId === category.id)
+    if (hasChildren) {
+      toast.error("Không thể xóa danh mục khi vẫn còn danh mục con")
+      setCategoryDeleteState({ dialogOpen: false, selectedCategory: null })
+      return
+    }
     setIsMutating(true)
     try {
       await ContentCategoriesService.delete(categoryDeleteState.selectedCategory.id)
@@ -438,97 +438,6 @@ export function CMSContent() {
     }
   }
 
-  const categoryColumns: Column<ContentCategory>[] = [
-    {
-      key: "name",
-      title: "Tên danh mục",
-      sortable: true,
-      render: (_, row) => (
-        <div>
-          <span className="font-medium">{row.name}</span>
-          {row.parentId && (
-            <span className="ml-2 text-xs text-muted-foreground">
-              (Danh mục con)
-            </span>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: "type",
-      title: "Loại",
-      render: (value) => (
-        <span className="text-sm text-muted-foreground">
-          {value === "TRUYEN_THONG" ? "Truyền thống" : "Nét tiêu biểu"}
-        </span>
-      ),
-    },
-    {
-      key: "slug",
-      title: "Slug",
-      render: (_, row) => (
-        <span className="font-mono text-xs text-muted-foreground">{row.slug}</span>
-      ),
-    },
-    {
-      key: "isVisible",
-      title: "Hiển thị",
-      render: (_, row) => (
-        <Switch
-          checked={row.isVisible}
-          onCheckedChange={() => handleCategoryToggleVisibility(row)}
-          disabled={isMutating}
-        />
-      ),
-    },
-    {
-      key: "sortOrder",
-      title: "Thứ tự",
-      sortable: true,
-    },
-    {
-      key: "actions",
-      title: "Thao tác",
-      render: (_, row) => (
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-blue-600"
-            title="Xem chi tiết"
-            onClick={() => {
-              router.push(`/cms/categories/${row.id}/detail`)
-            }}
-          >
-            <FileText className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-primary"
-            title="Sửa"
-            onClick={() => {
-              setCategoryFormState({ open: true, selectedCategory: row })
-            }}
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-            title="Xóa"
-            onClick={() => {
-              setCategoryDeleteState({ dialogOpen: true, selectedCategory: row })
-            }}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
-    },
-  ]
-
   const confirmDelete = async () => {
     if (!contentDeleteState.selectedItem) return
     if (isMutating) return
@@ -566,9 +475,13 @@ export function CMSContent() {
   }
 
   const openContentReorder = () => {
-    const selectedCategoryId = filterValues.category || "all"
-    if (selectedCategoryId === "all") {
+    if (selectedCategoryId === null) {
       toast.error("Vui lòng chọn danh mục để sắp xếp bài viết")
+      return
+    }
+    const selectedCategory = contentCategories.find((c) => c.id === selectedCategoryId) ?? null
+    if (selectedCategory?.parentId == null) {
+      toast.error("Vui lòng chọn danh mục con để sắp xếp bài viết")
       return
     }
     const next = [...contentData].sort((a, b) => a.order - b.order)
@@ -581,16 +494,20 @@ export function CMSContent() {
   }
 
   const saveContentReorder = async () => {
-    const selectedCategoryId = filterValues.category || "all"
-    if (selectedCategoryId === "all") {
+    if (selectedCategoryId === null) {
       toast.error("Vui lòng chọn danh mục để sắp xếp bài viết")
+      return
+    }
+    const selectedCategory = contentCategories.find((c) => c.id === selectedCategoryId) ?? null
+    if (selectedCategory?.parentId == null) {
+      toast.error("Vui lòng chọn danh mục con để sắp xếp bài viết")
       return
     }
     if (isMutating) return
     setIsMutating(true)
     try {
       await ContentItemsService.reorder({
-        categoryId: Number(selectedCategoryId),
+        categoryId: selectedCategoryId,
         orders: contentReorderState.draft.map((item, index) => ({
           id: Number(item.id),
           sortOrder: index + 1,
@@ -628,70 +545,176 @@ export function CMSContent() {
     }
   }
 
+  const selectedCategory =
+    selectedCategoryId === null ? null : contentCategories.find((c) => c.id === selectedCategoryId) ?? null
+
+  const categoryCreatePrefillData: ContentCategory | undefined = categoryFormState.selectedCategory
+    ? undefined
+    : {
+        id: 0,
+        type: categoryFormState.defaultType ?? typeFilter ?? CONTENT_TYPES.TRUYEN_THONG,
+        parentId: categoryFormState.defaultParentId,
+        name: "",
+        slug: "",
+        description: null,
+        isVisible: true,
+        sortOrder: 0,
+        createdAt: "",
+        updatedAt: "",
+      }
+
+  const contentCreatePrefillItem: ContentItem | undefined =
+    contentFormState.open &&
+    contentFormState.selectedItem === null &&
+    contentFormState.itemForEdit === null &&
+    selectedCategoryId !== null &&
+    selectedCategory?.parentId !== null
+      ? {
+          id: 0,
+          categoryId: selectedCategoryId,
+          type: typeFilter ?? undefined,
+          title: "",
+          summary: null,
+          bodyHtml: null,
+          coverMediaId: null,
+          isVisible: true,
+          sortOrder: 0,
+          viewCount: 0,
+          publishedAt: null,
+          createdAt: "",
+          updatedAt: "",
+        }
+      : undefined
+
   return (
     <AdminSection
       header={
         <PageHeader
-          title="Quản lý Nội dung CMS"
-          description="Quản lý nội dung bài viết, tài liệu truyền thống"
+          title={
+            typeFilter
+              ? `Quản lý Nội dung CMS - ${CONTENT_TYPE_LABELS[typeFilter]}`
+              : "Quản lý Nội dung CMS"
+          }
+          description={
+            typeFilter
+              ? `Quản lý bài viết và danh mục thuộc nhóm ${CONTENT_TYPE_LABELS[typeFilter]}`
+              : "Quản lý nội dung bài viết và danh mục CMS"
+          }
           actions={
-            activeTab === "content" ? (
-              <>
-                <Button variant="outline" className="gap-2 bg-transparent">
-                  <Download className="h-4 w-4" />
-                  Xuất Excel
-                </Button>
-                <Button
-                  variant="outline"
-                  className="gap-2 bg-transparent"
-                  onClick={openContentReorder}
-                >
-                  <GripVertical className="h-4 w-4" />
-                  Sắp xếp
-                </Button>
-                <Button
-                  className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-                  onClick={() => {
-                    setContentFormState({ open: true, selectedItem: null, itemForEdit: null })
+            <>
+              <Button variant="outline" className="gap-2 bg-transparent">
+                <Download className="h-4 w-4" />
+                Xuất Excel
+              </Button>
+              {presetType === null && (
+                <Select
+                  value={typeFilter ?? "all"}
+                  onValueChange={(value) => {
+                    if (value === "all") {
+                      setTypeFilter(null)
+                    } else if (isContentType(value)) {
+                      setTypeFilter(value)
+                    }
                   }}
                 >
-                  <Plus className="h-4 w-4" />
-                  Thêm bài viết
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  variant="outline"
-                  className="gap-2 bg-transparent"
-                  onClick={openCategoriesReorder}
-                >
-                  <GripVertical className="h-4 w-4" />
-                  Sắp xếp
-                </Button>
-                <Button
-                  className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-                  onClick={() => {
-                    setCategoryFormState({ open: true, selectedCategory: null })
-                  }}
-                >
-                  <Plus className="h-4 w-4" />
-                  Thêm danh mục
-                </Button>
-              </>
-            )
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Nhóm nội dung" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả</SelectItem>
+                    {CONTENT_TYPE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Button
+                variant="outline"
+                className="gap-2 bg-transparent"
+                onClick={openCategoriesReorder}
+              >
+                <GripVertical className="h-4 w-4" />
+                Sắp xếp danh mục
+              </Button>
+              <Button
+                className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={() => {
+                  setCategoryFormState({
+                    open: true,
+                    selectedCategory: null,
+                    defaultParentId: null,
+                    defaultType: typeFilter ?? null,
+                  })
+                }}
+              >
+                <Plus className="h-4 w-4" />
+                Thêm danh mục
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-2 bg-transparent"
+                onClick={openContentReorder}
+              >
+                <GripVertical className="h-4 w-4" />
+                Sắp xếp bài viết
+              </Button>
+              <Button
+                className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={() => {
+                  setContentFormState({ open: true, selectedItem: null, itemForEdit: null })
+                }}
+              >
+                <Plus className="h-4 w-4" />
+                Thêm bài viết
+              </Button>
+            </>
           }
         />
       }
     >
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "content" | "categories")}>
-        <TabsList>
-          <TabsTrigger value="content">Bài viết</TabsTrigger>
-          <TabsTrigger value="categories">Danh mục</TabsTrigger>
-        </TabsList>
+      <div className="flex gap-6">
+        <div className="w-72 flex-shrink-0 overflow-auto pr-2">
+          <CMSCategoryTree
+            categories={contentCategories}
+            selectedCategoryId={selectedCategoryId}
+            onSelectCategory={(categoryId) => {
+              setSelectedCategoryId(categoryId)
+              setCurrentPage(1)
+            }}
+            onAddChild={(parentId) => {
+              const parent = contentCategories.find((c) => c.id === parentId) ?? null
+              setCategoryFormState({
+                open: true,
+                selectedCategory: null,
+                defaultParentId: parentId,
+                defaultType: parent?.type ?? null,
+              })
+            }}
+            onEditCategory={(category) => {
+              setCategoryFormState({
+                open: true,
+                selectedCategory: category,
+                defaultParentId: null,
+                defaultType: null,
+              })
+            }}
+            onViewCategoryDetail={(categoryId) => {
+              router.push(`/cms/categories/${categoryId}/detail`)
+            }}
+            onToggleCategoryVisibility={(category) => handleCategoryToggleVisibility(category)}
+            onDeleteCategory={(category) => setCategoryDeleteState({ dialogOpen: true, selectedCategory: category })}
+          />
+        </div>
 
-        <TabsContent value="content" className="space-y-4">
-          {isLoading && <AdminLoadingState />}
+        <div className="flex-1 space-y-4">
+          {isLoading && contentData.length === 0 && <AdminLoadingState />}
+          {selectedCategoryId !== null && selectedCategory?.parentId === null && (
+            <div className="rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+              Danh mục cha không chứa bài viết trực tiếp. Vui lòng chọn danh mục con.
+            </div>
+          )}
 
           <AdminStatsGrid items={statsItems} columns={4} />
 
@@ -704,44 +727,37 @@ export function CMSContent() {
               setCurrentPage(1)
             }}
             filters={filters}
-            filterValues={filterValues}
+            filterValues={{ status: statusFilter }}
             onFilterChange={(key, value) => {
-              setFilterValues((prev) => ({ ...prev, [key]: value }))
+              if (key === "status") setStatusFilter(value)
               setCurrentPage(1)
             }}
             onClearFilters={() => {
-              setFilterValues({})
+              setStatusFilter("all")
               setCurrentPage(1)
             }}
             totalItems={totalElements}
             currentPage={currentPage}
             pageSize={pageSize}
             onPageChange={setCurrentPage}
+            serverPagination
           />
-        </TabsContent>
-
-        <TabsContent value="categories" className="space-y-4">
-          <DataTable
-            columns={categoryColumns}
-            data={contentCategories}
-            searchPlaceholder="Tìm theo tên danh mục..."
-            onSearch={() => {
-            }}
-            totalItems={contentCategories.length}
-            currentPage={1}
-            pageSize={100}
-            onPageChange={() => {}}
-          />
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
 
       <CategoryForm
         open={categoryFormState.open}
         onOpenChange={(open) => {
-          setCategoryFormState({ open, selectedCategory: open ? categoryFormState.selectedCategory : null })
+          setCategoryFormState((prev) => ({
+            open,
+            selectedCategory: open ? prev.selectedCategory : null,
+            defaultParentId: open ? prev.defaultParentId : null,
+            defaultType: open ? prev.defaultType : null,
+          }))
         }}
         mode={categoryFormState.selectedCategory ? "edit" : "create"}
-        initialData={categoryFormState.selectedCategory || undefined}
+        initialData={categoryFormState.selectedCategory || categoryCreatePrefillData}
+        defaultParentId={categoryFormState.defaultParentId}
         parentCategories={contentCategories.filter((c) => !c.parentId)}
         onSubmit={handleCategorySubmit}
         isMutating={isMutating}
@@ -750,14 +766,14 @@ export function CMSContent() {
       <ContentForm
         open={contentFormState.open}
         onOpenChange={(open) => {
-          setContentFormState({
+          setContentFormState((prev) => ({
             open,
-            selectedItem: open ? contentFormState.selectedItem : null,
-            itemForEdit: open ? contentFormState.itemForEdit : null,
-          })
+            selectedItem: open ? prev.selectedItem : null,
+            itemForEdit: open ? prev.itemForEdit : null,
+          }))
         }}
         mode={contentFormState.selectedItem ? "edit" : "create"}
-        initialData={contentFormState.itemForEdit || undefined}
+        initialData={contentFormState.itemForEdit || contentCreatePrefillItem}
         categoryOptions={contentCategoryOptions}
         onSubmit={handleContentSubmit}
         isMutating={isMutating}
