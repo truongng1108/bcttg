@@ -70,12 +70,11 @@ export interface SystemLog {
 }
 
 export interface ActivityItem {
-  id: string
-  action: string
-  target: string
-  user: string
-  timestamp: string
-  type: "content" | "user" | "song" | "system" | "profile"
+  title: string
+  actor: string
+  detail: string
+  createdAt: string
+  status: "SUCCESS" | "FAILED"
 }
 
 export type DashboardSummaryVariant = "default" | "primary" | "secondary" | "accent"
@@ -102,14 +101,12 @@ export interface DashboardSummaryCard {
 }
 
 export interface DashboardSystemStatusItem {
-  id: string
   label: string
   status: "active" | "warning" | "error"
   detail: string
 }
 
 export interface DashboardPendingItem {
-  id: string
   title: string
   type: string
   author: string

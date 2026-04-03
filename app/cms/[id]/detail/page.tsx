@@ -1,17 +1,23 @@
 "use client"
 
+import { Suspense } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { AdminLayout } from "@/components/admin/admin-layout"
 import { ContentDetailContent } from "@/components/admin/cms/content-detail-content"
+import { AdminLoadingState } from "@/components/admin/shared/admin-loading-state"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
+
+function ContentDetailBody({ contentId }: { readonly contentId: number }) {
+  return <ContentDetailContent contentId={contentId} />
+}
 
 export default function ContentDetailPage() {
   const params = useParams()
   const router = useRouter()
   const contentId = params?.id ? Number(params.id) : null
 
-  if (!contentId || isNaN(contentId)) {
+  if (!contentId || Number.isNaN(contentId)) {
     return (
       <AdminLayout>
         <div className="container mx-auto py-6">
@@ -28,9 +34,10 @@ export default function ContentDetailPage() {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Quay lại
         </Button>
-        <ContentDetailContent contentId={contentId} />
+        <Suspense fallback={<AdminLoadingState />}>
+          <ContentDetailBody contentId={contentId} />
+        </Suspense>
       </div>
     </AdminLayout>
   )
 }
-

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, Eye, EyeOff, Trash2, Download, GripVertical, Edit, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -15,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import type { SelectOption } from "@/lib/data/types"
 import type { ContentCategory, ContentItem } from "@/lib/types/api"
 import { ContentItemsService } from "@/lib/services/content-items.service"
 import { ContentCategoriesService } from "@/lib/services/content-categories.service"
@@ -26,9 +25,7 @@ import { AdminLoadingState } from "@/components/admin/shared/admin-loading-state
 import { AdminSection } from "@/components/admin/shared/admin-section"
 import { AdminStatsGrid } from "@/components/admin/shared/admin-stats-grid"
 import { CategoryForm } from "@/components/admin/cms/category-form"
-import { ContentForm } from "@/components/admin/cms/content-form"
 import { ContentCategoryFormData } from "@/lib/schemas/content-category.schema"
-import { ContentItemFormData } from "@/lib/schemas/content-item.schema"
 import {
   Dialog,
   DialogContent,
@@ -42,6 +39,7 @@ import { SortableCard } from "@/components/admin/shared/sortable/sortable-card"
 import { STATUS_FILTER_OPTIONS } from "@/lib/constants/status-options"
 import { CONTENT_TYPE_LABELS, CONTENT_TYPES, CONTENT_TYPE_OPTIONS, isContentType, type CMSPresetType } from "@/lib/constants/content-types"
 import type { CMSItemDisplay } from "@/lib/types/display"
+import { mapContentItemsToDisplay } from "@/lib/utils/map-content-items-to-display"
 
 interface CMSContentProps {
   readonly presetType?: CMSPresetType | null
@@ -64,16 +62,9 @@ export function CMSContent({ presetType = null }: Readonly<CMSContentProps>) {
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
   
   // Data State
-  const [contentData, setContentData] = useState<CMSItemDisplay[]>([])
+  const [contentItemsRaw, setContentItemsRaw] = useState<ContentItem[]>([])
   const [contentCategories, setContentCategories] = useState<ContentCategory[]>([])
-  const [contentCategoryOptions, setContentCategoryOptions] = useState<SelectOption[]>([])
-  
-  // Content Item Dialogs
-  const [contentFormState, setContentFormState] = useState({
-    open: false,
-    selectedItem: null as CMSItemDisplay | null,
-    itemForEdit: null as ContentItem | null,
-  })
+
   const [contentDeleteState, setContentDeleteState] = useState({
     dialogOpen: false,
     selectedItem: null as CMSItemDisplay | null,
@@ -102,6 +93,11 @@ export function CMSContent({ presetType = null }: Readonly<CMSContentProps>) {
     open: false,
     draft: [] as ContentCategory[],
   })
+
+  const contentData = useMemo(
+    () => mapContentItemsToDisplay(contentItemsRaw, contentCategories),
+    [contentItemsRaw, contentCategories]
+  )
   
   useEffect(() => {
     setTypeFilter(presetType)
@@ -134,23 +130,7 @@ export function CMSContent({ presetType = null }: Readonly<CMSContentProps>) {
         params.type = typeFilter
       }
       const response = await ContentItemsService.getAllAdmin(params)
-      const mapped: CMSItemDisplay[] = response.data.map((item) => {
-        const category = contentCategories.find((c) => c.id === item.categoryId)
-        return {
-          id: String(item.id),
-          title: item.title,
-          category: category?.name || "Chưa phân loại",
-          author: "",
-          status: item.isVisible ? "active" : "hidden",
-          views: item.viewCount,
-          publishedAt: item.publishedAt || item.createdAt,
-          updatedAt: item.updatedAt,
-          order: item.sortOrder,
-          isVisible: item.isVisible,
-          categoryId: item.categoryId,
-        }
-      })
-      setContentData(mapped)
+      setContentItemsRaw(response.data)
       if (response.meta) {
         setTotalElements(response.meta.total_elements)
       }
@@ -164,7 +144,7 @@ export function CMSContent({ presetType = null }: Readonly<CMSContentProps>) {
 
   useEffect(() => {
     loadContent()
-  }, [currentPage, searchQuery, statusFilter, selectedCategoryId, typeFilter, contentCategories])
+  }, [currentPage, searchQuery, statusFilter, selectedCategoryId, typeFilter])
 
   useEffect(() => {
     loadCategories()
@@ -268,13 +248,8 @@ export function CMSContent({ presetType = null }: Readonly<CMSContentProps>) {
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:text-primary"
             title="Sửa"
-            onClick={async () => {
-              try {
-                const fullItem = await ContentItemsService.getByIdAdmin(Number(row.id))
-                setContentFormState({ open: true, selectedItem: row, itemForEdit: fullItem })
-              } catch {
-                toast.error("Không tải được thông tin bài viết")
-              }
+            onClick={() => {
+              router.push(`/cms/${row.id}/detail?edit=1`)
             }}
           >
             <Edit className="h-4 w-4" />
@@ -337,13 +312,6 @@ export function CMSContent({ presetType = null }: Readonly<CMSContentProps>) {
         type: typeFilter || undefined,
       })
       setContentCategories(response.data)
-      const childCategoryOptions: SelectOption[] = response.data
-        .filter((cat) => !!cat.parentId)
-        .map((cat) => ({
-          value: String(cat.id),
-          label: cat.name,
-        }))
-      setContentCategoryOptions(childCategoryOptions)
     } catch {
       toast.error("Không tải được danh mục")
     }
@@ -402,37 +370,6 @@ export function CMSContent({ presetType = null }: Readonly<CMSContentProps>) {
       toast.success(category.isVisible ? "Đã ẩn danh mục" : "Đã hiện danh mục")
     } catch {
       toast.error("Cập nhật trạng thái danh mục thất bại")
-    } finally {
-      setIsMutating(false)
-    }
-  }
-
-  const handleContentSubmit = async (data: ContentItemFormData) => {
-    if (isMutating) return
-    setIsMutating(true)
-    try {
-      if (contentFormState.selectedItem) {
-        const apiItem = contentData.find((c) => c.id === contentFormState.selectedItem!.id)
-        if (apiItem) {
-          await ContentItemsService.update(Number(apiItem.id), data)
-          toast.success("Đã cập nhật bài viết")
-        }
-      } else {
-        await ContentItemsService.create(data)
-        toast.success("Đã thêm bài viết")
-      }
-      await loadContent()
-      setContentFormState({ open: false, selectedItem: null, itemForEdit: null })
-    } catch (err) {
-      let message = "Thao tác thất bại"
-      if (err instanceof Error) {
-        message = err.message
-      } else if (contentFormState.selectedItem) {
-        message = "Cập nhật bài viết thất bại"
-      } else {
-        message = "Thêm bài viết thất bại"
-      }
-      toast.error(message)
     } finally {
       setIsMutating(false)
     }
@@ -563,29 +500,6 @@ export function CMSContent({ presetType = null }: Readonly<CMSContentProps>) {
         updatedAt: "",
       }
 
-  const contentCreatePrefillItem: ContentItem | undefined =
-    contentFormState.open &&
-    contentFormState.selectedItem === null &&
-    contentFormState.itemForEdit === null &&
-    selectedCategoryId !== null &&
-    selectedCategory?.parentId !== null
-      ? {
-          id: 0,
-          categoryId: selectedCategoryId,
-          type: typeFilter ?? undefined,
-          title: "",
-          summary: null,
-          bodyHtml: null,
-          coverMediaId: null,
-          isVisible: true,
-          sortOrder: 0,
-          viewCount: 0,
-          publishedAt: null,
-          createdAt: "",
-          updatedAt: "",
-        }
-      : undefined
-
   return (
     <AdminSection
       header={
@@ -663,7 +577,16 @@ export function CMSContent({ presetType = null }: Readonly<CMSContentProps>) {
               <Button
                 className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={() => {
-                  setContentFormState({ open: true, selectedItem: null, itemForEdit: null })
+                  const selectedCategory =
+                    selectedCategoryId === null
+                      ? null
+                      : contentCategories.find((c) => c.id === selectedCategoryId) ?? null
+                  if (selectedCategoryId === null || selectedCategory?.parentId === null) {
+                    toast.error("Vui lòng chọn danh mục con để thêm bài viết")
+                    return
+                  }
+                  const typeQuery = typeFilter ? `&type=${encodeURIComponent(typeFilter)}` : ""
+                  router.push(`/cms/new?categoryId=${selectedCategoryId}${typeQuery}`)
                 }}
               >
                 <Plus className="h-4 w-4" />
@@ -760,22 +683,6 @@ export function CMSContent({ presetType = null }: Readonly<CMSContentProps>) {
         defaultParentId={categoryFormState.defaultParentId}
         parentCategories={contentCategories.filter((c) => !c.parentId)}
         onSubmit={handleCategorySubmit}
-        isMutating={isMutating}
-      />
-
-      <ContentForm
-        open={contentFormState.open}
-        onOpenChange={(open) => {
-          setContentFormState((prev) => ({
-            open,
-            selectedItem: open ? prev.selectedItem : null,
-            itemForEdit: open ? prev.itemForEdit : null,
-          }))
-        }}
-        mode={contentFormState.selectedItem ? "edit" : "create"}
-        initialData={contentFormState.itemForEdit || contentCreatePrefillItem}
-        categoryOptions={contentCategoryOptions}
-        onSubmit={handleContentSubmit}
         isMutating={isMutating}
       />
 

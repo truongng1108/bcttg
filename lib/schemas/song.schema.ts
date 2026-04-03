@@ -20,8 +20,6 @@ export const SongEntitySchema = z.object({
 
 export const SongCreateFormSchema = z.object({
   title: z.string().min(1, "Vui lòng nhập tên ca khúc"),
-  composer: z.string().min(1, "Vui lòng nhập tác giả"),
-  year: z.string().optional().or(z.literal("")),
   category: z.string().optional().or(z.literal("")),
   lyrics: z.string().optional().or(z.literal("")),
   audio: z.instanceof(File).optional().nullable(),

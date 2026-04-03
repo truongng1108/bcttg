@@ -1,48 +1,20 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
-import { FileText, User, Music, Settings, Shield } from "lucide-react"
+import { CheckCircle2, XCircle } from "lucide-react"
 
 import type { ActivityItem } from "@/lib/data/types"
-import { DashboardService } from "@/lib/services/dashboard.service"
 
-const typeIcons: Record<string, typeof FileText> = {
-  content: FileText,
-  user: User,
-  song: Music,
-  system: Settings,
-  profile: Shield,
+interface RecentActivityProps {
+  readonly activities: ActivityItem[]
 }
 
-const typeColors: Record<string, string> = {
-  content: "bg-primary/10 text-primary",
-  user: "bg-secondary/10 text-secondary",
-  song: "bg-accent/10 text-accent",
-  system: "bg-muted text-muted-foreground",
-  profile: "bg-info/10 text-info",
+const statusColors: Record<ActivityItem["status"], string> = {
+  SUCCESS: "bg-[#2E7D32]/10 text-[#2E7D32]",
+  FAILED: "bg-destructive/10 text-destructive",
 }
 
-export function RecentActivity() {
-  const [activities, setActivities] = useState<ActivityItem[]>([])
-
-  useEffect(() => {
-    DashboardService.getOverview()
-      .then((data) => {
-        const mappedActivities: ActivityItem[] = data.recentActivities.map((activity) => ({
-          id: activity.id,
-          action: activity.action,
-          target: activity.target,
-          user: activity.user,
-          timestamp: activity.timestamp,
-          type: activity.type as "content" | "user" | "song" | "system" | "profile",
-        }))
-        setActivities(mappedActivities)
-      })
-      .catch(() => {
-        setActivities([])
-      })
-  }, [])
+export function RecentActivity({ activities }: Readonly<RecentActivityProps>) {
 
   return (
     <div className="rounded-md border border-border bg-card shadow-sm">
@@ -53,8 +25,8 @@ export function RecentActivity() {
       </div>
       <div className="divide-y divide-border">
         {activities.map((activity, index) => {
-          const Icon = typeIcons[activity.type] || FileText
-          const activityKey = `${String(activity.id)}-${activity.timestamp}-${index}`
+          const Icon = activity.status === "SUCCESS" ? CheckCircle2 : XCircle
+          const activityKey = `${activity.createdAt}-${activity.title}-${index}`
           return (
             <div
               key={activityKey}
@@ -63,19 +35,18 @@ export function RecentActivity() {
               <div
                 className={cn(
                   "flex h-8 w-8 flex-shrink-0 items-center justify-center rounded",
-                  typeColors[activity.type] || typeColors.content
+                  statusColors[activity.status] || "bg-muted text-muted-foreground"
                 )}
               >
                 <Icon className="h-4 w-4" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-foreground">
-                  <span className="font-medium">{activity.action}</span>
-                  {" - "}
-                  <span className="text-muted-foreground">{activity.target}</span>
+                  <span className="font-medium">{activity.title}</span>
+                  <span className="text-muted-foreground"> - {activity.detail}</span>
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {activity.user} &bull; {activity.timestamp}
+                  {activity.actor} &bull; {activity.createdAt}
                 </p>
               </div>
             </div>

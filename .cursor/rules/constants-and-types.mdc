@@ -22,8 +22,8 @@ alwaysApply: true
 - Component-specific props can stay in component files if only used once
 
 ## Labels and Options
-- Labels (e.g., `PROFILE_TYPE_LABELS`, `ROLE_LABELS`) should be constants
-- Select options (e.g., `STATUS_FILTER_OPTIONS`) should be constants
+- Labels (e.g., `PROFILE_TYPE_LABELS`, badge helpers in `roles.ts`) should be constants
+- Select options (e.g., `STATUS_FILTER_OPTIONS`, `ACCOUNT_FORM_ROLE_OPTIONS`) should be constants
 - NO inline label objects or option arrays in components
 
 ## Import Rules

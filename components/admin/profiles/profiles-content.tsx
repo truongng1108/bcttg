@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useLayoutEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, Edit, Trash2, GripVertical, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -26,6 +26,7 @@ import {
 import { SortableList } from "@/components/admin/shared/sortable/sortable-list"
 import { SortableCard } from "@/components/admin/shared/sortable/sortable-card"
 import { type ProfileType, PROFILE_TYPES, PROFILE_TYPE_LABELS } from "@/lib/constants/profile-types"
+import { loadUnitNamesForProfileType } from "@/lib/utils/data-profile-units"
 
 interface ProfilesContentProps {
   readonly presetType?: ProfileType | null
@@ -100,28 +101,11 @@ export function ProfilesContent({ presetType = null }: Readonly<ProfilesContentP
     setCurrentPage(1)
   }, [presetType])
 
-  const getUniqueSortedUnitNames = (items: DataProfile[]) => {
-    const unique = new Set<string>()
-    for (const item of items) {
-      if (item.unitName) unique.add(item.unitName)
-    }
-    return Array.from(unique).sort((a, b) => a.localeCompare(b, "vi"))
-  }
-
-  const loadUnitNamesForType = async (type: ProfileType) => {
-    const res = await DataProfilesService.getAllAdmin({
-      page: 1,
-      page_size: 500,
-      profileType: type,
-    })
-    return getUniqueSortedUnitNames(res.data)
-  }
-
   const loadUnitNames = async () => {
     setIsUnitNamesLoading(true)
     try {
       if (presetType) {
-        const units = await loadUnitNamesForType(presetType)
+        const units = await loadUnitNamesForProfileType(presetType)
         setUnitNamesByType({
           [PROFILE_TYPES.THU_TRUONG]: presetType === PROFILE_TYPES.THU_TRUONG ? units : [],
           [PROFILE_TYPES.CHIEN_SI]: presetType === PROFILE_TYPES.CHIEN_SI ? units : [],
@@ -131,9 +115,9 @@ export function ProfilesContent({ presetType = null }: Readonly<ProfilesContentP
       }
 
       const [thuTruong, chienSi, anhHung] = await Promise.all([
-        loadUnitNamesForType(PROFILE_TYPES.THU_TRUONG),
-        loadUnitNamesForType(PROFILE_TYPES.CHIEN_SI),
-        loadUnitNamesForType(PROFILE_TYPES.ANH_HUNG),
+        loadUnitNamesForProfileType(PROFILE_TYPES.THU_TRUONG),
+        loadUnitNamesForProfileType(PROFILE_TYPES.CHIEN_SI),
+        loadUnitNamesForProfileType(PROFILE_TYPES.ANH_HUNG),
       ])
 
       setUnitNamesByType({
@@ -152,6 +136,16 @@ export function ProfilesContent({ presetType = null }: Readonly<ProfilesContentP
   useEffect(() => {
     loadUnitNames()
   }, [presetType])
+
+  useLayoutEffect(() => {
+    if (mode === "list") return
+    const profileFormType = mode === "edit" ? selectedProfile?.profileType : currentProfileType
+    if (!profileFormType) {
+      toast.error("Không xác định được loại hồ sơ")
+      setMode("list")
+      setSelectedProfile(null)
+    }
+  }, [mode, selectedProfile, currentProfileType])
 
   const handleToggleVisibility = async (profile: DataProfile) => {
     if (isMutating) return
@@ -324,7 +318,9 @@ export function ProfilesContent({ presetType = null }: Readonly<ProfilesContentP
 
   if (mode !== "list") {
     const profileFormType = mode === "edit" ? selectedProfile?.profileType : currentProfileType
-    if (!profileFormType) return null
+    if (!profileFormType) {
+      return <AdminLoadingState />
+    }
     return (
       <ProfileForm
         mode={mode === "create" ? "create" : "edit"}

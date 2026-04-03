@@ -154,25 +154,22 @@ export interface DashboardOverview {
     value: number
   }>
   recentActivities: Array<{
-    id: string
-    action: string
-    target: string
-    user: string
-    timestamp: string
-    type: string
+    title: string
+    actor: string
+    detail: string
+    createdAt: string
+    status: string
   }>
   systemStatuses: Array<{
-    id: string
-    label: string
-    status: string
-    detail: string
+    name: string
+    value: string
+    state: string
   }>
   pendingItems: Array<{
-    id: string
     title: string
     type: string
-    author: string
-    date: string
+    createdBy: string
+    createdAt: string
     status: string
   }>
 }

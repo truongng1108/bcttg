@@ -74,8 +74,6 @@ export function SongsContent() {
     resolver: zodResolver(SongCreateFormSchema),
     defaultValues: {
       title: "",
-      composer: "",
-      year: "",
       category: "",
       lyrics: "",
       audio: null,
@@ -144,8 +142,6 @@ export function SongsContent() {
     resolver: zodResolver(SongCreateFormSchema),
     defaultValues: {
       title: "",
-      composer: "",
-      year: "",
       category: "",
       lyrics: "",
       audio: null,
@@ -213,8 +209,6 @@ export function SongsContent() {
     const category = songCategories.find((c) => c.id === song.categoryId)
     editForm.reset({
       title: song.title,
-      composer: "",
-      year: "",
       category: category ? String(category.id) : "",
       lyrics: song.lyric || "",
       audio: null,
@@ -306,8 +300,6 @@ export function SongsContent() {
     if (!addDialogOpen) {
       addForm.reset({
         title: "",
-        composer: "",
-        year: "",
         category: "",
         lyrics: "",
         audio: null,

@@ -11,18 +11,36 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/lib/contexts/auth-context"
+import {
+  getAccountDetailLine,
+  getAccountDisplayName,
+  getAccountInitials,
+  getAccountRoleLabel,
+} from "@/lib/utils/user-account-display"
 
 interface AdminHeaderProps {
   readonly onToggleSidebar: () => void
 }
 
 export function AdminHeader({ onToggleSidebar }: AdminHeaderProps) {
-  const { logout } = useAuth()
+  const { logout, me } = useAuth()
   const router = useRouter()
+  const displayName = me ? getAccountDisplayName(me) : ""
+  const roleLabel = me ? getAccountRoleLabel(me) : ""
+  const detailLine = me ? getAccountDetailLine(me) : ""
+  const initials = me ? getAccountInitials(me) : ""
 
   const handleLogout = () => {
     logout()
     router.push("/dang-nhap")
+  }
+
+  const handleOpenMyProfile = () => {
+    if (me) {
+      router.push(`/tai-khoan/${me.id}/detail`)
+      return
+    }
+    router.push("/tai-khoan")
   }
   return (
     <header className="relative flex h-16 items-center justify-between border-b border-border bg-card px-4 shadow-sm">
@@ -73,26 +91,24 @@ export function AdminHeader({ onToggleSidebar }: AdminHeaderProps) {
               variant="ghost"
               className="flex items-center gap-3 px-3 text-foreground hover:bg-primary/10"
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-primary bg-primary/10 text-primary">
-                <User className="h-4 w-4" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-primary bg-primary/10 text-xs font-semibold text-primary">
+                {initials ? <span aria-hidden>{initials}</span> : <User className="h-4 w-4" />}
               </div>
               <div className="hidden flex-col items-start md:flex">
-                <span className="text-sm font-semibold text-foreground">Nguyễn Huy Hoàng</span>
-                <span className="text-xs text-muted-foreground">
-                  Quản trị viên
-                </span>
+                <span className="text-sm font-semibold text-foreground">{displayName || "—"}</span>
+                <span className="text-xs text-muted-foreground">{roleLabel || "—"}</span>
               </div>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <div className="px-2 py-1.5">
-              <p className="text-sm font-semibold text-foreground">Nguyễn Huy Hoàng</p>
+              <p className="text-sm font-semibold text-foreground">{displayName || "—"}</p>
               <p className="text-xs text-muted-foreground">
-                Phòng Chính trị - Binh chủng TTG
+                {detailLine || roleLabel || "—"}
               </p>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer">
+            <DropdownMenuItem className="cursor-pointer" onClick={handleOpenMyProfile}>
               <User className="mr-2 h-4 w-4" />
               Thông tin cá nhân
             </DropdownMenuItem>

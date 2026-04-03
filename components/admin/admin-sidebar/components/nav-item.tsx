@@ -58,11 +58,27 @@ function NavGroup({
           </Link>
           <button
             type="button"
-            className="inline-flex items-center justify-center rounded p-1 hover:bg-muted"
-            onClick={() => setOpen((prev) => !prev)}
+            className={cn(
+              "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
+              "text-sidebar-foreground/70 transition-all duration-200",
+              "hover:bg-white/12 hover:text-sidebar-primary",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--sidebar)]",
+              "active:scale-[0.96]"
+            )}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setOpen((prev) => !prev)
+            }}
             aria-label={open ? "Thu gọn" : "Mở rộng"}
           >
-            <ChevronDown className={cn("h-4 w-4 transition-transform", open ? "rotate-180" : "")} />
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 shrink-0 transition-transform duration-200",
+                open ? "rotate-180" : ""
+              )}
+              strokeWidth={2.25}
+            />
           </button>
         </div>
         {open && (

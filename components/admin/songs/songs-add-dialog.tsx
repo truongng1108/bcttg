@@ -55,29 +55,13 @@ export function SongsAddDialog({
             control={control}
           />
           <FormFieldRHF
-            label="Tác giả"
-            name="composer"
-            required
-            placeholder="Nhập tên tác giả"
+            label="Thể loại"
+            name="category"
+            type="select"
+            placeholder="Chọn thể loại"
             control={control}
+            options={categoryOptions}
           />
-          <div className="grid grid-cols-2 gap-4">
-            <FormFieldRHF
-              label="Năm sáng tác"
-              name="year"
-              type="number"
-              placeholder="VD: 1972"
-              control={control}
-            />
-            <FormFieldRHF
-              label="Thể loại"
-              name="category"
-              type="select"
-              placeholder="Chọn thể loại"
-              control={control}
-              options={categoryOptions}
-            />
-          </div>
           <FormFieldRHF
             label="Lời bài hát"
             name="lyrics"

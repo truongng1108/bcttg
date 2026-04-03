@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Save, X, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { FormFieldRHF } from "@/components/admin/shared/form-field-rhf"
 import { ConfirmDialog } from "@/components/admin/shared/confirm-dialog"
 import { useForm } from "react-hook-form"
@@ -11,6 +12,7 @@ import { AccountsService } from "@/lib/services/accounts.service"
 import { toast } from "sonner"
 import { isValidPasswordPolicy } from "@/lib/utils/password-policy"
 import { isValidPhone, normalizePhone } from "@/lib/utils/validators"
+import { ACCOUNT_FORM_ROLE_OPTIONS } from "@/lib/constants/roles"
 
 interface AccountFormData {
   phone: string
@@ -35,12 +37,6 @@ interface AccountFormProps {
   readonly onBack: () => void
   readonly onSave?: () => void
 }
-
-const roleOptions = [
-  { value: "ADMIN", label: "Quản trị viên" },
-  { value: "MANAGER", label: "Quản lý" },
-  { value: "USER", label: "Người dùng" },
-]
 
 export function AccountForm({
   mode,
@@ -165,22 +161,22 @@ export function AccountForm({
   }
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center gap-4">
+    <div className="mx-auto w-full space-y-6 pb-4">
+      <div className="flex items-start gap-4">
         <Button
+          type="button"
           variant="ghost"
           size="icon"
           onClick={onBack}
-          className="h-9 w-9"
+          className="mt-0.5 h-10 w-10 shrink-0 rounded-lg border border-border/80 bg-card shadow-sm hover:bg-muted/80"
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div>
-          <h1 className="text-xl font-bold text-foreground">
+        <div className="min-w-0 space-y-1">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
             {mode === "create" ? "Thêm tài khoản mới" : "Chỉnh sửa tài khoản"}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="text-sm leading-relaxed text-muted-foreground">
             {mode === "create"
               ? "Tạo tài khoản người dùng mới trong hệ thống"
               : "Cập nhật thông tin tài khoản người dùng"}
@@ -188,153 +184,161 @@ export function AccountForm({
         </div>
       </div>
 
-      {/* Form Card */}
-      <div className="rounded-md border border-border bg-card shadow-sm">
-        <div className="border-b border-border px-6 py-4">
-          <h2 className="text-base font-semibold text-foreground">
-            Thông tin cơ bản
-          </h2>
-        </div>
-
-        <div className="space-y-6 p-6">
-          {/* Row 1: Phone & Full Name */}
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <FormFieldRHF
-              label="Số điện thoại"
-              name="phone"
-              type="tel"
-              required
-              placeholder="Nhập số điện thoại (8-15 chữ số)"
-              control={form.control}
-              disabled={mode === "edit"}
-            />
-            <FormFieldRHF
-              label="Họ và tên"
-              name="profile.fullName"
-              required
-              placeholder="Nhập họ và tên đầy đủ"
-              control={form.control}
-            />
+      <form
+        autoComplete="off"
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="space-y-6"
+      >
+        <Card className="gap-0 overflow-hidden rounded-xl border-border/80 py-0 shadow-md">
+          <div className="border-b border-border bg-gradient-to-r from-muted/60 to-muted/30 px-6 py-4">
+            <h2 className="text-base font-semibold text-foreground">
+              Thông tin cơ bản
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Thông tin đăng nhập và hồ sơ cá nhân
+            </p>
           </div>
 
-          {/* Row 2: Rank & Position */}
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <FormFieldRHF
-              label="Cấp bậc"
-              name="profile.rankName"
-              placeholder="Nhập cấp bậc"
-              control={form.control}
-            />
-            <FormFieldRHF
-              label="Chức vụ"
-              name="profile.position"
-              placeholder="Nhập chức vụ"
-              control={form.control}
-            />
-          </div>
-
-          {/* Row 3: Unit & Email */}
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <FormFieldRHF
-              label="Đơn vị"
-              name="profile.unitName"
-              placeholder="Nhập đơn vị"
-              control={form.control}
-            />
-            <FormFieldRHF
-              label="Email"
-              name="profile.email"
-              type="email"
-              placeholder="Nhập địa chỉ email"
-              control={form.control}
-            />
-          </div>
-
-          {/* Row 4: Address & Birth Date */}
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <FormFieldRHF
-              label="Địa chỉ"
-              name="profile.address"
-              placeholder="Nhập địa chỉ"
-              control={form.control}
-            />
-            <FormFieldRHF
-              label="Ngày sinh"
-              name="profile.birthDate"
-              type="text"
-              placeholder="YYYY-MM-DD"
-              control={form.control}
-            />
-          </div>
-
-          {/* Row 5: Role & Status */}
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <FormFieldRHF
-              label="Vai trò"
-              name="role"
-              type="select"
-              required
-              control={form.control}
-              options={roleOptions}
-            />
-            <FormFieldRHF
-              label="Trạng thái"
-              name="isActive"
-              type="switch"
-              control={form.control}
-            />
-          </div>
-        </div>
-
-        {/* Password Section - Only for Create */}
-        {mode === "create" && (
-          <>
-            <div className="border-t border-border px-6 py-4">
-              <h2 className="text-base font-semibold text-foreground">
-                Mật khẩu đăng nhập
-              </h2>
+          <CardContent className="space-y-5 pt-6">
+            <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+              <FormFieldRHF
+                label="Số điện thoại"
+                name="phone"
+                type="tel"
+                required
+                placeholder="Nhập số điện thoại (8-15 chữ số)"
+                control={form.control}
+                disabled={mode === "edit"}
+              />
+              <FormFieldRHF
+                label="Họ và tên"
+                name="profile.fullName"
+                required
+                placeholder="Nhập họ và tên đầy đủ"
+                control={form.control}
+              />
             </div>
-            <div className="space-y-6 p-6 pt-0">
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <FormFieldRHF
-                  label="Mật khẩu"
-                  name="password"
-                  type="password"
-                  required
-                  placeholder="Nhập mật khẩu"
-                  control={form.control}
-                  helpText="Tối thiểu 8 ký tự, bao gồm chữ hoa, chữ thường và số"
-                />
-                <FormFieldRHF
-                  label="Xác nhận mật khẩu"
-                  name="confirmPassword"
-                  type="password"
-                  required
-                  placeholder="Nhập lại mật khẩu"
-                  control={form.control}
-                />
+
+            <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+              <FormFieldRHF
+                label="Cấp bậc"
+                name="profile.rankName"
+                placeholder="Nhập cấp bậc"
+                control={form.control}
+              />
+              <FormFieldRHF
+                label="Chức vụ"
+                name="profile.position"
+                placeholder="Nhập chức vụ"
+                control={form.control}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+              <FormFieldRHF
+                label="Đơn vị"
+                name="profile.unitName"
+                placeholder="Nhập đơn vị"
+                control={form.control}
+              />
+              <FormFieldRHF
+                label="Email"
+                name="profile.email"
+                type="email"
+                placeholder="Nhập địa chỉ email"
+                control={form.control}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+              <FormFieldRHF
+                label="Địa chỉ"
+                name="profile.address"
+                placeholder="Nhập địa chỉ"
+                control={form.control}
+              />
+              <FormFieldRHF
+                label="Ngày sinh"
+                name="profile.birthDate"
+                type="date"
+                placeholder="Chọn ngày sinh"
+                control={form.control}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+              <FormFieldRHF
+                label="Vai trò"
+                name="role"
+                type="select"
+                required
+                control={form.control}
+                options={ACCOUNT_FORM_ROLE_OPTIONS}
+              />
+              <FormFieldRHF
+                label="Trạng thái"
+                name="isActive"
+                type="switch"
+                control={form.control}
+              />
+            </div>
+          </CardContent>
+
+          {mode === "create" && (
+            <>
+              <div className="border-t border-border bg-gradient-to-r from-muted/50 to-muted/20 px-6 py-4">
+                <h2 className="text-base font-semibold text-foreground">
+                  Mật khẩu đăng nhập
+                </h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Đặt mật khẩu cho tài khoản mới
+                </p>
               </div>
-            </div>
-          </>
-        )}
-      </div>
+              <CardContent className="space-y-5 pb-6 pt-2">
+                <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+                  <FormFieldRHF
+                    label="Mật khẩu"
+                    name="password"
+                    type="password"
+                    required
+                    placeholder="Nhập mật khẩu"
+                    control={form.control}
+                    helpText="Tối thiểu 8 ký tự, bao gồm chữ hoa, chữ thường và số"
+                  />
+                  <FormFieldRHF
+                    label="Xác nhận mật khẩu"
+                    name="confirmPassword"
+                    type="password"
+                    required
+                    placeholder="Nhập lại mật khẩu"
+                    control={form.control}
+                  />
+                </div>
+              </CardContent>
+            </>
+          )}
 
-      {/* Sticky Action Bar */}
-      <div className="sticky bottom-0 -mx-6 -mb-6 border-t border-border bg-card px-6 py-4 shadow-lg">
-        <div className="flex items-center justify-end gap-3">
-          <Button variant="outline" onClick={handleCancel} className="gap-2 bg-transparent">
-            <X className="h-4 w-4" />
-            Hủy bỏ
-          </Button>
-          <Button
-            onClick={form.handleSubmit(onSubmit)}
-            className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            <Save className="h-4 w-4" />
-            {mode === "create" ? "Tạo tài khoản" : "Lưu thay đổi"}
-          </Button>
-        </div>
-      </div>
+          <CardFooter className="flex flex-col-reverse gap-3 border-t border-border bg-muted/25 px-6 py-5 sm:flex-row sm:items-center sm:justify-end sm:gap-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCancel}
+              className="h-11 w-full gap-2 border-border/80 bg-background shadow-sm sm:w-auto sm:min-w-[140px]"
+            >
+              <X className="h-4 w-4 shrink-0" />
+              Hủy bỏ
+            </Button>
+            <Button
+              type="submit"
+              disabled={isMutating}
+              className="h-11 w-full gap-2 shadow-sm sm:w-auto sm:min-w-[180px]"
+            >
+              <Save className="h-4 w-4 shrink-0" />
+              {mode === "create" ? "Tạo tài khoản" : "Lưu thay đổi"}
+            </Button>
+          </CardFooter>
+        </Card>
+      </form>
 
       {/* Cancel Confirmation Dialog */}
       <ConfirmDialog

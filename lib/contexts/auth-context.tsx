@@ -1,12 +1,20 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react"
 import { AuthService } from "@/lib/services/auth.service"
-import type { AuthLoginResponse } from "@/lib/types/api"
+import type { UserAccount } from "@/lib/types/api"
 
 interface AuthContextType {
   isAuthenticated: boolean
-  user: AuthLoginResponse | null
+  me: UserAccount | null
   login: (phone: string, password: string) => Promise<void>
   logout: () => void
   isLoading: boolean
@@ -14,36 +22,66 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [user, setUser] = useState<AuthLoginResponse | null>(null)
+  const [me, setMe] = useState<UserAccount | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const token = AuthService.getToken()
-    if (token) {
-      setIsAuthenticated(true)
+    let cancelled = false
+    const init = async () => {
+      const token = AuthService.getToken()
+      if (!token) {
+        setIsLoading(false)
+        return
+      }
+      try {
+        const account = await AuthService.getMe()
+        if (!cancelled) {
+          setMe(account)
+          setIsAuthenticated(true)
+        }
+      } catch {
+        if (!cancelled) {
+          setMe(null)
+          setIsAuthenticated(false)
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
     }
-    setIsLoading(false)
+    void init()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  const login = async (phone: string, password: string) => {
-    const response = await AuthService.login(phone, password)
-    setUser(response)
-    setIsAuthenticated(true)
-  }
+  const login = useCallback(async (phone: string, password: string) => {
+    await AuthService.login(phone, password)
+    try {
+      const account = await AuthService.getMe()
+      setMe(account)
+      setIsAuthenticated(true)
+    } catch (err) {
+      AuthService.logout()
+      setMe(null)
+      setIsAuthenticated(false)
+      throw err
+    }
+  }, [])
 
-  const logout = () => {
+  const logout = useCallback(() => {
     AuthService.logout()
-    setUser(null)
+    setMe(null)
     setIsAuthenticated(false)
-  }
+  }, [])
 
-  return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, isLoading }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({ isAuthenticated, me, login, logout, isLoading }),
+    [isAuthenticated, isLoading, login, logout, me]
   )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

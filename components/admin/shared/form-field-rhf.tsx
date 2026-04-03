@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -18,7 +19,6 @@ import {
   type Control,
   type FieldPath,
   type FieldValues,
-  useFormState,
 } from "react-hook-form"
 import { z } from "zod"
 
@@ -109,6 +109,34 @@ function isFieldRequired<T extends FieldValues>(
   }
 }
 
+function displayValueForSelect(value: unknown): string {
+  if (typeof value === "string" || typeof value === "number") return String(value)
+  return ""
+}
+
+function displayValueForNumberField(value: unknown): string {
+  if (value === "") return ""
+  if (typeof value === "number") return String(value)
+  if (typeof value === "string") return value
+  return ""
+}
+
+function displayValueForDateField(value: unknown): string {
+  if (typeof value !== "string" || !value) return ""
+  if (value.includes("T")) return value.slice(0, 10)
+  return value.length >= 10 ? value.slice(0, 10) : value
+}
+
+function displayValueForField(value: unknown, fieldType: FieldType): string {
+  if (value === null || value === undefined) return ""
+  if (fieldType === "select") return displayValueForSelect(value)
+  if (fieldType === "number") return displayValueForNumberField(value)
+  if (fieldType === "date") return displayValueForDateField(value)
+  if (typeof value === "string") return value
+  if (typeof value === "number") return String(value)
+  return ""
+}
+
 export function FormFieldRHF<T extends FieldValues>({
   control,
   name,
@@ -128,7 +156,7 @@ export function FormFieldRHF<T extends FieldValues>({
   // Auto-detect required from schema if not explicitly provided
   const fieldName = String(name)
   const isRequiredFromSchema = isFieldRequired(control, fieldName)
-  const required = requiredProp !== undefined ? requiredProp : isRequiredFromSchema
+  const required = requiredProp ?? isRequiredFromSchema
 
   if (type === "file") {
     return (
@@ -209,38 +237,25 @@ export function FormFieldRHF<T extends FieldValues>({
       name={name}
       render={({ field, fieldState }) => {
         const errorMessage = fieldState.error?.message
-        const stringValue = typeof field.value === "string" ? field.value : ""
+        const displayValue = displayValueForField(field.value, type)
 
-        let fieldNode = (
-          type === "password" ? (
+        let fieldNode: ReactNode = null
+
+        if (type === "password") {
+          fieldNode = (
             <PasswordInput
               id={inputId}
               name={String(name)}
               placeholder={placeholder}
               required={required}
               disabled={disabled}
-              value={stringValue}
-              onChange={(e) => field.onChange(e.target.value)}
-              onBlur={field.onBlur}
-              className={cn(errorMessage && "border-destructive")}
-            />
-          ) : (
-            <Input
-              id={inputId}
-              name={String(name)}
-              type={type}
-              placeholder={placeholder}
-              required={required}
-              disabled={disabled}
-              value={stringValue}
+              value={displayValue}
               onChange={(e) => field.onChange(e.target.value)}
               onBlur={field.onBlur}
               className={cn(errorMessage && "border-destructive")}
             />
           )
-        )
-
-        if (type === "textarea") {
+        } else if (type === "textarea") {
           fieldNode = (
             <Textarea
               id={inputId}
@@ -248,19 +263,24 @@ export function FormFieldRHF<T extends FieldValues>({
               placeholder={placeholder}
               required={required}
               disabled={disabled}
-              value={stringValue}
+              value={displayValue}
               onChange={(e) => field.onChange(e.target.value)}
               onBlur={field.onBlur}
               rows={rows}
               className={cn(errorMessage && "border-destructive")}
             />
           )
-        }
-
-        if (type === "select") {
+        } else if (type === "select") {
+          const selectValue =
+            field.value === "" ||
+            field.value === null ||
+            field.value === undefined ||
+            field.value === 0
+              ? undefined
+              : String(field.value)
           fieldNode = (
             <Select
-              value={stringValue}
+              value={selectValue}
               onValueChange={(value) => field.onChange(value)}
               disabled={disabled}
             >
@@ -275,6 +295,54 @@ export function FormFieldRHF<T extends FieldValues>({
                 ))}
               </SelectContent>
             </Select>
+          )
+        } else if (type === "date") {
+          fieldNode = (
+            <Input
+              id={inputId}
+              name={String(name)}
+              type="date"
+              placeholder={placeholder}
+              required={required}
+              disabled={disabled}
+              value={displayValue}
+              onChange={(e) => field.onChange(e.target.value || null)}
+              onBlur={field.onBlur}
+              className={cn(errorMessage && "border-destructive")}
+            />
+          )
+        } else if (type === "number") {
+          fieldNode = (
+            <Input
+              id={inputId}
+              name={String(name)}
+              type="number"
+              placeholder={placeholder}
+              required={required}
+              disabled={disabled}
+              value={displayValue}
+              onChange={(e) => {
+                const v = e.target.value
+                field.onChange(v === "" ? 0 : Number(v))
+              }}
+              onBlur={field.onBlur}
+              className={cn(errorMessage && "border-destructive")}
+            />
+          )
+        } else {
+          fieldNode = (
+            <Input
+              id={inputId}
+              name={String(name)}
+              type={type}
+              placeholder={placeholder}
+              required={required}
+              disabled={disabled}
+              value={displayValue}
+              onChange={(e) => field.onChange(e.target.value)}
+              onBlur={field.onBlur}
+              className={cn(errorMessage && "border-destructive")}
+            />
           )
         }
 

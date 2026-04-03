@@ -245,39 +245,41 @@ export function ReportsContent() {
             })
           }}
         >
-          <div className="divide-y divide-border">
-            {topContentData.map((item, index) => (
-              <div
-                key={item.title}
-                className="flex items-center justify-between px-4 py-3"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="flex h-6 w-6 items-center justify-center rounded bg-muted text-xs font-medium text-muted-foreground">
-                    {index + 1}
-                  </span>
-                  <span className="text-sm font-medium text-foreground">
-                    {item.title}
-                  </span>
+          <div className="h-full overflow-y-auto">
+            <div className="divide-y divide-border">
+              {topContentData.map((item, index) => (
+                <div
+                  key={item.title}
+                  className="flex items-center justify-between px-4 py-3"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-muted text-xs font-medium text-muted-foreground">
+                      {index + 1}
+                    </span>
+                    <span className="truncate text-sm font-medium text-foreground">
+                      {item.title}
+                    </span>
+                  </div>
+                  <div className="ml-3 flex shrink-0 items-center gap-3">
+                    <span className="text-sm text-muted-foreground">
+                      {item.views.toLocaleString()} lượt
+                    </span>
+                    <span
+                      className={`flex items-center gap-1 text-xs font-medium ${
+                        item.trend >= 0 ? "text-[#2E7D32]" : "text-destructive"
+                      }`}
+                    >
+                      {item.trend >= 0 ? (
+                        <TrendingUp className="h-3 w-3" />
+                      ) : (
+                        <TrendingDown className="h-3 w-3" />
+                      )}
+                      {Math.abs(item.trend)}%
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-muted-foreground">
-                    {item.views.toLocaleString()} lượt
-                  </span>
-                  <span
-                    className={`flex items-center gap-1 text-xs font-medium ${
-                      item.trend >= 0 ? "text-[#2E7D32]" : "text-destructive"
-                    }`}
-                  >
-                    {item.trend >= 0 ? (
-                      <TrendingUp className="h-3 w-3" />
-                    ) : (
-                      <TrendingDown className="h-3 w-3" />
-                    )}
-                    {Math.abs(item.trend)}%
-                  </span>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </ChartContainer>
       </div>

@@ -11,6 +11,7 @@ import { DashboardService } from "@/lib/services/dashboard.service"
 import { formatNumber } from "@/lib/utils/formatters"
 import type { DashboardOverview } from "@/lib/types/api"
 import type {
+  ActivityItem,
   DashboardPendingItem,
   DashboardSummaryCard,
   DashboardSystemStatusItem,
@@ -22,6 +23,7 @@ export function DashboardContent() {
   const [isLoading, setIsLoading] = useState(true)
   const [lastUpdatedAt, setLastUpdatedAt] = useState("")
   const [summaryCards, setSummaryCards] = useState<DashboardSummaryCard[]>([])
+  const [activities, setActivities] = useState<ActivityItem[]>([])
   const [systemStatusItems, setSystemStatusItems] = useState<DashboardSystemStatusItem[]>([])
   const [pendingItems, setPendingItems] = useState<DashboardPendingItem[]>([])
   const [overview, setOverview] = useState<DashboardOverview | null>(null)
@@ -86,33 +88,41 @@ export function DashboardContent() {
         ]
         setSummaryCards(cards)
 
+        const mappedActivities: ActivityItem[] = data.recentActivities.map((activity) => ({
+          title: activity.title,
+          actor: activity.actor,
+          detail: activity.detail,
+          createdAt: activity.createdAt,
+          status: activity.status === "FAILED" ? "FAILED" : "SUCCESS",
+        }))
+        setActivities(mappedActivities)
+
         const statusItems: DashboardSystemStatusItem[] = data.systemStatuses.map((item) => {
           let status: "active" | "warning" | "error" = "active"
-          if (item.status === "warning" || item.status === "error") {
-            status = item.status
-          } else if (item.status !== "active") {
+          const normalizedState = item.state.toUpperCase()
+          if (normalizedState === "WARN" || normalizedState === "WARNING") {
             status = "warning"
+          } else if (normalizedState === "ERROR" || normalizedState === "BAD" || normalizedState === "DOWN") {
+            status = "error"
           }
           return {
-            id: item.id,
-            label: item.label,
+            label: item.name,
             status,
-            detail: item.detail,
+            detail: item.value,
           }
         })
         setSystemStatusItems(statusItems)
 
         const pending: DashboardPendingItem[] = data.pendingItems.map((item) => {
           let status: "pending" | "review" = "pending"
-          if (item.status === "review") {
+          if (item.status === "DANG_XEM_XET" || item.status === "REVIEW") {
             status = "review"
           }
           return {
-            id: item.id,
             title: item.title,
             type: item.type,
-            author: item.author,
-            date: item.date,
+            author: item.createdBy,
+            date: item.createdAt,
             status,
           }
         })
@@ -192,7 +202,7 @@ export function DashboardContent() {
 
       {/* Activity & Quick Access */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <RecentActivity />
+        <RecentActivity activities={activities} />
 
         {/* System Status */}
         <div className="rounded-md border border-border bg-card shadow-sm">
@@ -204,7 +214,7 @@ export function DashboardContent() {
           <div className="divide-y divide-border">
             {systemStatusItems.map((item, index) => (
               <StatusItem
-                key={`status-item-${String(item.id || index)}-${index}`}
+                key={`status-item-${item.label}-${index}`}
                 label={item.label}
                 status={item.status}
                 detail={item.detail}
@@ -245,7 +255,7 @@ export function DashboardContent() {
             <tbody className="divide-y divide-border">
               {pendingItems.map((item, index) => (
                 <PendingRow
-                  key={`pending-item-${String(item.id || index)}-${index}`}
+                  key={`pending-item-${item.title}-${index}`}
                   title={item.title}
                   type={item.type}
                   author={item.author}
