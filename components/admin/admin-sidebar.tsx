@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import { useEffect, useMemo, useState, type ElementType } from "react"
 import { cn } from "@/lib/utils"
 import {
   LayoutDashboard,
@@ -24,6 +24,8 @@ import {
 } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { NavItemComponent } from "./admin-sidebar/components/nav-item"
+import { HomeModulesService } from "@/lib/services/home-modules.service"
+import type { HomeModule } from "@/lib/data/types"
 
 interface AdminSidebarProps {
   readonly collapsed: boolean
@@ -34,7 +36,7 @@ interface NavItem {
   id: string
   title: string
   href?: string
-  icon: React.ElementType
+  icon: ElementType
   children?: NavItem[]
 }
 
@@ -45,7 +47,7 @@ const brandConfig = {
   line2: "Tăng Thiết Giáp",
 }
 
-const navItems: NavItem[] = [
+const baseNavItems: NavItem[] = [
   {
     id: "dashboard",
     title: "Dashboard",
@@ -124,8 +126,74 @@ const navItems: NavItem[] = [
   },
 ]
 
+const HOME_MODULE_NAV_BINDINGS: Readonly<Record<string, string>> = {
+  "cms-truyen-thong": "truyen-thong",
+  "cms-net-tieu-bieu": "net-tieu-bieu",
+  "ho-so-thu-truong": "thu-truong",
+  "ho-so-anh-hung": "anh-hung",
+  songs: "ca-khuc",
+}
+
+function isNavItem(item: NavItem | null): item is NavItem { 
+  return item !== null
+}
+
+function applyHomeModulesToNav(
+  items: readonly NavItem[],
+  homeModulesById: Readonly<Record<string, HomeModule>> | null
+): NavItem[] {
+  const mapItem = (item: NavItem): NavItem | null => {
+    const moduleId = HOME_MODULE_NAV_BINDINGS[item.id]
+    const module = moduleId && homeModulesById ? homeModulesById[moduleId] : null
+    if (module && !module.enabled) {
+      return null
+    }
+    const title = module?.name.trim() ? module.name : item.title
+    const children = item.children?.map(mapItem).filter(isNavItem)
+    if (item.children && (!children || children.length === 0)) {
+      return null
+    }
+    return {
+      ...item,
+      title,
+      children,
+    }
+  }
+
+  return items.map(mapItem).filter(isNavItem)
+}
+
 export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
   const pathname = usePathname()
+  const [homeModulesById, setHomeModulesById] = useState<Record<string, HomeModule> | null>(null)
+
+  useEffect(() => {
+    let isMounted = true
+    HomeModulesService.getAll()
+      .then((modules) => {
+        if (!isMounted) {
+          return
+        }
+        const nextMap = modules.reduce<Record<string, HomeModule>>((acc, module) => {
+          acc[module.id] = module
+          return acc
+        }, {})
+        setHomeModulesById(nextMap)
+      })
+      .catch(() => {
+        if (isMounted) {
+          setHomeModulesById(null)
+        }
+      })
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const navItems = useMemo(
+    () => applyHomeModulesToNav(baseNavItems, homeModulesById),
+    [homeModulesById]
+  )
 
   return (
     <aside

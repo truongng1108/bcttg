@@ -48,8 +48,8 @@ function CMSNewInner() {
 
   const categoryOptions: SelectOption[] = useMemo(
     () =>
-      categories
-        .filter((cat) => !!cat.parentId)
+      [...categories]
+        .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id)
         .map((cat) => ({
           value: String(cat.id),
           label: cat.name,
@@ -62,7 +62,7 @@ function CMSNewInner() {
       return undefined
     }
     const cat = categories.find((c) => c.id === parsedCategoryId)
-    if (cat?.parentId == null) {
+    if (!cat) {
       return undefined
     }
     return {

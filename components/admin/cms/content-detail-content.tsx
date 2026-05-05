@@ -90,13 +90,13 @@ export function ContentDetailContent({ contentId }: ContentDetailContentProps) {
           page_size: 500,
           type: contentItem.type ?? undefined,
         })
-        const childCategoryOptions: SelectOption[] = response.data
-          .filter((cat) => !!cat.parentId)
+        const opts: SelectOption[] = [...response.data]
+          .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id)
           .map((cat) => ({
             value: String(cat.id),
             label: cat.name,
           }))
-        setCategoryOptions(childCategoryOptions)
+        setCategoryOptions(opts)
       } catch {
         toast.error("Không tải được danh mục")
       }

@@ -178,9 +178,16 @@ export function CMSCategoryTree({
           rootCategories.map((root) => {
             const level1Children = byParentId.get(root.id) ?? []
             const isExpanded = expandedLevel1Ids.has(root.id)
+            const isSelected = selectedCategoryId === root.id
+            const hasChildren = level1Children.length > 0
             return (
-              <div key={root.id} className="space-y-1">
-                <div className="flex items-center gap-1">
+              <div key={root.id} className="group space-y-1">
+                <div
+                  className={cn(
+                    "flex items-center justify-between rounded-md px-2 py-1",
+                    isSelected ? "bg-primary/10" : "hover:bg-muted/40"
+                  )}
+                >
                   <button
                     type="button"
                     onClick={() => {
@@ -192,16 +199,61 @@ export function CMSCategoryTree({
                         return next
                       })
                     }}
-                    className={cn(
-                      "flex flex-1 items-center gap-2 rounded-md px-2 py-1 hover:bg-muted/40",
-                      selectedCategoryId === root.id && "bg-primary/10"
-                    )}
+                    className="flex flex-1 items-center gap-2 text-left"
                     style={{ paddingLeft: 0 }}
                   >
-                    <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    {isExpanded ? (
+                      <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    ) : (
+                      <Folder className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    )}
                     <span className="min-w-0 flex-1 truncate text-sm font-medium">{root.name}</span>
                     <span className="text-xs text-muted-foreground">{level1Children.length}</span>
                   </button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className={cn("h-8 w-8 opacity-0 group-hover:opacity-100", isSelected && "opacity-100")}
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => onAddChild(root.id)}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Thêm thư mục con
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => onEditCategory(root)}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        Sửa
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onToggleCategoryVisibility(root)}>
+                        {root.isVisible ? (
+                          <EyeOff className="mr-2 h-4 w-4" />
+                        ) : (
+                          <Eye className="mr-2 h-4 w-4" />
+                        )}
+                        {root.isVisible ? "Ẩn" : "Hiện"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        disabled={hasChildren}
+                        className={cn(hasChildren && "pointer-events-none")}
+                        onClick={() => onDeleteCategory(root)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Xóa
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => onViewCategoryDetail(root.id)}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        Chi tiết
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
                 {isExpanded && level1Children.map((child) => renderCategoryRow(child, 2))}
               </div>

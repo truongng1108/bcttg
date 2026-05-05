@@ -416,11 +416,6 @@ export function CMSContent({ presetType = null }: Readonly<CMSContentProps>) {
       toast.error("Vui lòng chọn danh mục để sắp xếp bài viết")
       return
     }
-    const selectedCategory = contentCategories.find((c) => c.id === selectedCategoryId) ?? null
-    if (selectedCategory?.parentId == null) {
-      toast.error("Vui lòng chọn danh mục con để sắp xếp bài viết")
-      return
-    }
     const next = [...contentData].sort((a, b) => a.order - b.order)
     setContentReorderState({ open: true, draft: next })
   }
@@ -433,11 +428,6 @@ export function CMSContent({ presetType = null }: Readonly<CMSContentProps>) {
   const saveContentReorder = async () => {
     if (selectedCategoryId === null) {
       toast.error("Vui lòng chọn danh mục để sắp xếp bài viết")
-      return
-    }
-    const selectedCategory = contentCategories.find((c) => c.id === selectedCategoryId) ?? null
-    if (selectedCategory?.parentId == null) {
-      toast.error("Vui lòng chọn danh mục con để sắp xếp bài viết")
       return
     }
     if (isMutating) return
@@ -577,12 +567,8 @@ export function CMSContent({ presetType = null }: Readonly<CMSContentProps>) {
               <Button
                 className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={() => {
-                  const selectedCategory =
-                    selectedCategoryId === null
-                      ? null
-                      : contentCategories.find((c) => c.id === selectedCategoryId) ?? null
-                  if (selectedCategoryId === null || selectedCategory?.parentId === null) {
-                    toast.error("Vui lòng chọn danh mục con để thêm bài viết")
+                  if (selectedCategoryId === null) {
+                    toast.error("Vui lòng chọn danh mục để thêm bài viết")
                     return
                   }
                   const typeQuery = typeFilter ? `&type=${encodeURIComponent(typeFilter)}` : ""
@@ -633,12 +619,6 @@ export function CMSContent({ presetType = null }: Readonly<CMSContentProps>) {
 
         <div className="flex-1 space-y-4">
           {isLoading && contentData.length === 0 && <AdminLoadingState />}
-          {selectedCategoryId !== null && selectedCategory?.parentId === null && (
-            <div className="rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
-              Danh mục cha không chứa bài viết trực tiếp. Vui lòng chọn danh mục con.
-            </div>
-          )}
-
           <AdminStatsGrid items={statsItems} columns={4} />
 
           <DataTable
