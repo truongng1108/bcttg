@@ -114,8 +114,8 @@ export function CategoryForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
+        <DialogHeader className="shrink-0 px-6 pt-6 pr-14">
           <DialogTitle>{mode === "create" ? "Thêm danh mục" : "Sửa danh mục"}</DialogTitle>
           <DialogDescription>
             {mode === "create"
@@ -123,62 +123,67 @@ export function CategoryForm({
               : "Cập nhật thông tin danh mục"}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-          <FormFieldRHF
-            control={form.control}
-            name="type"
-            label="Loại danh mục"
-            type="select"
-            required
-            options={CONTENT_TYPE_OPTIONS}
-          />
-          <FormFieldRHF
-            control={form.control}
-            name="parentId"
-            label="Danh mục cha"
-            type="select"
-            options={parentOptions}
-            helpText="Chọn danh mục cha nếu muốn tạo danh mục con (tối đa 2 cấp)"
-          />
-          <FormFieldRHF
-            control={form.control}
-            name="name"
-            label="Tên danh mục"
-            required
-            placeholder="Nhập tên danh mục"
-          />
-          <FormFieldRHF
-            control={form.control}
-            name="slug"
-            label="Slug"
-            required
-            placeholder="tin-noi-bo"
-            helpText="URL-friendly identifier (chỉ chữ thường, số và dấu gạch ngang)"
-          />
-          <FormFieldRHF
-            control={form.control}
-            name="description"
-            label="Mô tả"
-            type="textarea"
-            rows={3}
-            placeholder="Nhập mô tả danh mục"
-          />
-          <FormFieldRHF
-            control={form.control}
-            name="sortOrder"
-            label="Thứ tự sắp xếp"
-            type="number"
-            placeholder="0"
-            helpText="Số càng nhỏ, hiển thị càng trước"
-          />
-          <FormFieldRHF
-            control={form.control}
-            name="isVisible"
-            label="Hiển thị"
-            type="switch"
-            helpText="Bật/tắt hiển thị danh mục trên ứng dụng"
-          />
-          <DialogFooter>
+        <form
+          onSubmit={form.handleSubmit(handleSubmit)}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pb-2">
+            <FormFieldRHF
+              control={form.control}
+              name="type"
+              label="Loại danh mục"
+              type="select"
+              required
+              options={CONTENT_TYPE_OPTIONS}
+            />
+            <FormFieldRHF
+              control={form.control}
+              name="parentId"
+              label="Danh mục cha"
+              type="select"
+              options={parentOptions}
+              helpText="Chọn danh mục cha nếu muốn tạo danh mục con (tối đa 2 cấp)"
+            />
+            <FormFieldRHF
+              control={form.control}
+              name="name"
+              label="Tên danh mục"
+              required
+              placeholder="Nhập tên danh mục"
+            />
+            <FormFieldRHF
+              control={form.control}
+              name="slug"
+              label="Slug"
+              required
+              placeholder="tin-noi-bo"
+              helpText="URL-friendly identifier (chỉ chữ thường, số và dấu gạch ngang)"
+            />
+            <FormFieldRHF
+              control={form.control}
+              name="description"
+              label="Mô tả"
+              type="textarea"
+              rows={3}
+              placeholder="Nhập mô tả danh mục"
+            />
+            <FormFieldRHF
+              control={form.control}
+              name="sortOrder"
+              label="Thứ tự sắp xếp"
+              type="number"
+              placeholder="0"
+              helpText="Số càng nhỏ, hiển thị càng trước"
+            />
+            <FormFieldRHF
+              control={form.control}
+              name="isVisible"
+              label="Hiển thị"
+              type="switch"
+              helpText="Bật/tắt hiển thị danh mục trên ứng dụng"
+            />
+          </div>
+          <DialogFooter className="shrink-0 gap-2 border-t bg-background px-6 py-4">
             <Button
               type="button"
               variant="outline"

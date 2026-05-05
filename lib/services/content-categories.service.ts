@@ -1,3 +1,4 @@
+import { CMS_ADMIN_CATEGORY_FETCH_PAGE_SIZE } from "@/lib/constants/cms-admin"
 import { ApiClient } from "@/lib/services/api-client"
 import type {
   ContentCategory,
@@ -15,6 +16,11 @@ export interface ContentCategoryListParams {
   is_visible?: boolean
   parent_id?: number
 }
+
+type ContentCategoryListParamsWithoutPaging = Omit<
+  ContentCategoryListParams,
+  "page" | "page_size"
+>
 
 export class ContentCategoriesService {
   static async getAllPublic(
@@ -55,6 +61,30 @@ export class ContentCategoriesService {
       throw new Error(response.error?.message || "Failed to fetch content categories")
     }
     return { data: response.data, meta: response.meta }
+  }
+
+  /** Gộp toàn bộ trang (backend giới hạn page_size tối đa 100). */
+  static async getAllAdminMerged(
+    params?: ContentCategoryListParamsWithoutPaging
+  ): Promise<ContentCategory[]> {
+    const merged: ContentCategory[] = []
+    const seen = new Set<number>()
+    let page = 1
+    const page_size = CMS_ADMIN_CATEGORY_FETCH_PAGE_SIZE
+    while (true) {
+      const { data, meta } = await this.getAllAdmin({ ...params, page, page_size })
+      for (const category of data) {
+        if (!seen.has(category.id)) {
+          seen.add(category.id)
+          merged.push(category)
+        }
+      }
+      if (!data.length) break
+      if (meta && page >= meta.total_pages) break
+      if (!meta && data.length < page_size) break
+      page += 1
+    }
+    return merged
   }
 
   static async getByIdAdmin(id: number): Promise<ContentCategory> {

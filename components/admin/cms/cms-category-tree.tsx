@@ -2,6 +2,8 @@
 
 import { useMemo, useState, useEffect } from "react"
 import {
+  ChevronLeft,
+  ChevronRight,
   Edit,
   Eye,
   EyeOff,
@@ -23,6 +25,12 @@ import {
 import type { ContentCategory } from "@/lib/types/api"
 import { cn } from "@/lib/utils"
 
+interface CMSCategoryTreeRootsPagination {
+  readonly page: number
+  readonly pageSize: number
+  readonly onPageChange: (page: number) => void
+}
+
 interface CMSCategoryTreeProps {
   readonly categories: readonly ContentCategory[]
   readonly selectedCategoryId: number | null
@@ -32,6 +40,7 @@ interface CMSCategoryTreeProps {
   readonly onViewCategoryDetail: (categoryId: number) => void
   readonly onToggleCategoryVisibility: (category: ContentCategory) => void
   readonly onDeleteCategory: (category: ContentCategory) => void
+  readonly rootsPagination?: CMSCategoryTreeRootsPagination
 }
 
 export function CMSCategoryTree({
@@ -43,6 +52,7 @@ export function CMSCategoryTree({
   onViewCategoryDetail,
   onToggleCategoryVisibility,
   onDeleteCategory,
+  rootsPagination,
 }: CMSCategoryTreeProps) {
   const [expandedLevel1Ids, setExpandedLevel1Ids] = useState<Set<number>>(() => new Set())
 
@@ -60,7 +70,17 @@ export function CMSCategoryTree({
     return map
   }, [categories])
 
-  const rootCategories = byParentId.get(null) ?? []
+  const sortedRoots = (byParentId.get(null) ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder)
+
+  let rootCategories = sortedRoots
+  let rootsPage = 1
+  let rootsTotalPages = 1
+  if (rootsPagination) {
+    rootsPage = rootsPagination.page
+    rootsTotalPages = Math.max(1, Math.ceil(sortedRoots.length / rootsPagination.pageSize))
+    const start = (rootsPagination.page - 1) * rootsPagination.pageSize
+    rootCategories = sortedRoots.slice(start, start + rootsPagination.pageSize)
+  }
 
   useEffect(() => {
     if (selectedCategoryId === null) return
@@ -172,7 +192,7 @@ export function CMSCategoryTree({
   return (
     <div className="space-y-1">
       <div className="space-y-1">
-        {rootCategories.length === 0 ? (
+        {sortedRoots.length === 0 ? (
           <div className="px-2 py-3 text-center text-sm text-muted-foreground">Chưa có danh mục</div>
         ) : (
           rootCategories.map((root) => {
@@ -261,6 +281,37 @@ export function CMSCategoryTree({
           })
         )}
       </div>
+      {rootsPagination && sortedRoots.length > rootsPagination.pageSize ? (
+        <div className="flex items-center justify-between gap-2 border-t pt-2">
+          <span className="text-xs text-muted-foreground">
+            Trang {rootsPage}/{rootsTotalPages}
+          </span>
+          <div className="flex gap-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              disabled={rootsPage <= 1}
+              onClick={() => rootsPagination.onPageChange(rootsPage - 1)}
+              aria-label="Trang trước"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              disabled={rootsPage >= rootsTotalPages}
+              onClick={() => rootsPagination.onPageChange(rootsPage + 1)}
+              aria-label="Trang sau"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

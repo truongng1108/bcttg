@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, Eye, EyeOff, Trash2, Download, GripVertical, Edit, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -37,6 +37,7 @@ import {
 import { SortableList } from "@/components/admin/shared/sortable/sortable-list"
 import { SortableCard } from "@/components/admin/shared/sortable/sortable-card"
 import { STATUS_FILTER_OPTIONS } from "@/lib/constants/status-options"
+import { CMS_SIDEBAR_ROOTS_PER_PAGE } from "@/lib/constants/cms-admin"
 import { CONTENT_TYPE_LABELS, CONTENT_TYPES, CONTENT_TYPE_OPTIONS, isContentType, type CMSPresetType } from "@/lib/constants/content-types"
 import type { CMSItemDisplay } from "@/lib/types/display"
 import { mapContentItemsToDisplay } from "@/lib/utils/map-content-items-to-display"
@@ -55,6 +56,7 @@ export function CMSContent({ presetType = null }: Readonly<CMSContentProps>) {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(20)
   const [totalElements, setTotalElements] = useState(0)
+  const [categoryRootsPage, setCategoryRootsPage] = useState(1)
   
   // Loading State
   const [isLoading, setIsLoading] = useState(true)
@@ -106,7 +108,52 @@ export function CMSContent({ presetType = null }: Readonly<CMSContentProps>) {
   useEffect(() => {
     setSelectedCategoryId(null)
     setCurrentPage(1)
+    setCategoryRootsPage(1)
   }, [typeFilter])
+
+  const sortedRootsCount = useMemo(
+    () => contentCategories.filter((c) => c.parentId === null).length,
+    [contentCategories]
+  )
+
+  useEffect(() => {
+    const pages = Math.max(1, Math.ceil(sortedRootsCount / CMS_SIDEBAR_ROOTS_PER_PAGE))
+    setCategoryRootsPage((p) => Math.min(p, pages))
+  }, [sortedRootsCount])
+
+  useEffect(() => {
+    if (selectedCategoryId === null) return
+    const cat = contentCategories.find((c) => c.id === selectedCategoryId)
+    if (!cat) return
+    const roots = contentCategories
+      .filter((c) => c.parentId === null)
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+    const rootId = cat.parentId ?? cat.id
+    const idx = roots.findIndex((r) => r.id === rootId)
+    if (idx < 0) return
+    const desiredPage = Math.floor(idx / CMS_SIDEBAR_ROOTS_PER_PAGE) + 1
+    setCategoryRootsPage((prev) => {
+      const start = (prev - 1) * CMS_SIDEBAR_ROOTS_PER_PAGE
+      const onPage = roots.slice(start, start + CMS_SIDEBAR_ROOTS_PER_PAGE)
+      if (onPage.some((r) => r.id === rootId)) return prev
+      return desiredPage
+    })
+  }, [selectedCategoryId, contentCategories])
+
+  const loadCategories = useCallback(async () => {
+    try {
+      const merged = await ContentCategoriesService.getAllAdminMerged({
+        type: typeFilter || undefined,
+      })
+      setContentCategories(merged)
+    } catch {
+      toast.error("Không tải được danh mục")
+    }
+  }, [typeFilter])
+
+  useEffect(() => {
+    void loadCategories()
+  }, [loadCategories])
 
   // Static Options - imported from constants
 
@@ -145,10 +192,6 @@ export function CMSContent({ presetType = null }: Readonly<CMSContentProps>) {
   useEffect(() => {
     loadContent()
   }, [currentPage, searchQuery, statusFilter, selectedCategoryId, typeFilter])
-
-  useEffect(() => {
-    loadCategories()
-  }, [typeFilter])
 
   const handleToggleVisibility = async (item: CMSItemDisplay) => {
     if (isMutating) return
@@ -304,18 +347,6 @@ export function CMSContent({ presetType = null }: Readonly<CMSContentProps>) {
     { id: "active", value: activeCount, label: "Đang hiển thị", icon: Eye, variant: "success" as const },
     { id: "hidden", value: hiddenCount, label: "Đã ẩn", icon: EyeOff, variant: "default" as const },
   ]
-
-  const loadCategories = async () => {
-    try {
-      const response = await ContentCategoriesService.getAllAdmin({
-        page_size: 500,
-        type: typeFilter || undefined,
-      })
-      setContentCategories(response.data)
-    } catch {
-      toast.error("Không tải được danh mục")
-    }
-  }
 
   const handleCategorySubmit = async (data: ContentCategoryFormData) => {
     if (isMutating) return
@@ -588,6 +619,11 @@ export function CMSContent({ presetType = null }: Readonly<CMSContentProps>) {
           <CMSCategoryTree
             categories={contentCategories}
             selectedCategoryId={selectedCategoryId}
+            rootsPagination={{
+              page: categoryRootsPage,
+              pageSize: CMS_SIDEBAR_ROOTS_PER_PAGE,
+              onPageChange: setCategoryRootsPage,
+            }}
             onSelectCategory={(categoryId) => {
               setSelectedCategoryId(categoryId)
               setCurrentPage(1)
